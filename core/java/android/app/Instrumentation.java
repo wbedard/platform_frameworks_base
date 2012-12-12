@@ -47,6 +47,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+///////////////////////////////////////////////////
+import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacySettings;
+import android.privacy.PrivacySettingsManager;
+import android.telephony.TelephonyManager;
+///////////////////////////////////////////////////
+
 
 /**
  * Base class for implementing application instrumentation code.  When running
@@ -87,6 +94,10 @@ public class Instrumentation {
     private boolean mAutomaticPerformanceSnapshots = false;
     private PerformanceCollector mPerformanceCollector;
     private Bundle mPerfMetrics = new Bundle();
+    
+    //---------------------------------------------------------------------------------------------------------------------------------------------------------
+    private PrivacySettingsManager pSetMan;
+    //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
     public Instrumentation() {
     }
@@ -1390,6 +1401,55 @@ public class Instrumentation {
             Context who, IBinder contextThread, IBinder token, Activity target,
             Intent intent, int requestCode, Bundle options) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
+        //we first do not intercept open activity, because we're looking forward if it works fine!
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
+        boolean isAllowed = true;
+        try{
+        	Log.i("PrivacyContext","now we are in execStartActivity() from package: " + who.getPackageName());
+            if(intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL)){
+            	Log.i("PrivacyContext","package: " + who.getPackageName() + " tries to take a phone call");
+        		if(pSetMan == null) pSetMan = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        		PrivacySettings settings = pSetMan.getSettings(who.getPackageName(), -1);
+        		if(pSetMan != null && settings != null && settings.getPhoneCallSetting() != PrivacySettings.REAL){ //is not allowed
+        			//test if broadcasting works!
+            		final Context tmp = who;
+            		isAllowed = false;
+            		new Thread(new Runnable() {
+            		    public void run() {
+            		    	try{
+             		    		Thread.sleep(1000); //wait 1 Second
+             		    	}
+             		    	catch(Exception e){
+             		    		//nothing here
+             		    	}  
+            		    	Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                    		Bundle extras = new Bundle();
+                    		extras.putString("packageName", tmp.getPackageName());
+                    		extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                    		privacy.putExtras(extras);
+                    		tmp.sendBroadcast(privacy);
+                    		Log.i("PrivacyContext","sent privacy intent");
+            		    }
+            		}).start();
+            		pSetMan.notification(who.getPackageName(), 0, PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+        		else{ //is allowed
+        			isAllowed = true;
+        			pSetMan.notification(who.getPackageName(), 0, PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+        		
+            }
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        	 if(who != null)
+        		 Log.i("PrivacyContext","got exception while trying to resolve intents for package: " + who.getPackageName());
+        	 else
+        		 Log.i("PrivacyContext","got exception while trying to resolve intents for unknown package");
+        	 
+        }
+    	
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1405,6 +1465,14 @@ public class Instrumentation {
                 }
             }
         }
+        //now fake state
+        try{
+        	if(!isAllowed) return new ActivityResult(requestCode, intent);
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        }
+    	//end testing
         try {
             intent.setAllowFds(false);
             intent.migrateExtraStreamToClipData();
@@ -1430,6 +1498,66 @@ public class Instrumentation {
     public void execStartActivities(Context who, IBinder contextThread,
             IBinder token, Activity target, Intent[] intents, Bundle options) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
+        boolean isAllowed = true;
+        try{
+        	Log.i("PrivacyContext","now we are in execStartActivities() from package: " + who.getPackageName());
+        	List<Intent> tmp = new ArrayList<Intent>();
+        	boolean call_detected = false;
+        	for(int i=0;i<intents.length;i++){
+        		if(intents[i].getAction().equals(Intent.ACTION_CALL) || intents[i].getAction().equals(Intent.ACTION_DIAL)){
+        			call_detected = true;
+        			continue;
+        		}
+        		tmp.add(intents[i]);
+        	}
+        	if(call_detected){
+        		Log.i("PrivacyContext","package: " + who.getPackageName() + " tries to take a phone call");
+        		if(pSetMan == null) pSetMan = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        		PrivacySettings settings = pSetMan.getSettings(who.getPackageName(), -1);
+        		if(pSetMan != null && settings != null && settings.getPhoneCallSetting() != PrivacySettings.REAL){ //is not allowed
+        			final Context ctx = who;
+            		//now replace intents
+            		intents = (Intent[]) tmp.toArray();
+            		tmp = null;
+            		System.gc();
+            		new Thread(new Runnable() {
+            		    public void run() {
+            		    	try{
+             		    		Thread.sleep(1000); //wait 1 Second
+             		    	}
+             		    	catch(Exception e){
+             		    		//nothing here
+             		    	}  
+            		    	Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                    		Bundle extras = new Bundle();
+                    		extras.putString("packageName", ctx.getPackageName());
+                    		extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                    		privacy.putExtras(extras);
+                    		ctx.sendBroadcast(privacy);
+                    		Log.i("PrivacyContext","sent privacy intent");
+            		    }
+            		}).start();
+            		pSetMan.notification(who.getPackageName(), 0, PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+        		else{
+        			pSetMan.notification(who.getPackageName(), 0, PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+        		
+        	}
+        	else{
+        		tmp = null;
+        		System.gc();
+        	}
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        	if(who != null)
+       		 	Log.i("PrivacyContext","got exception while trying to resolve intents for package: " + who.getPackageName());
+       	 	else
+       	 		Log.i("PrivacyContext","got exception while trying to resolve intents for unknown package");
+        }
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1489,6 +1617,50 @@ public class Instrumentation {
         Context who, IBinder contextThread, IBinder token, Fragment target,
         Intent intent, int requestCode, Bundle options) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
+        boolean isAllowed = true;
+        try{
+        	Log.i("PrivacyContext","now we are in execStartActivity() from package: " + who.getPackageName());
+            if(intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL)){
+            	Log.i("PrivacyContext","package: " + who.getPackageName() + " tries to take a phone call");
+        		if(pSetMan == null) pSetMan = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        		PrivacySettings settings = pSetMan.getSettings(who.getPackageName(), -1);
+        		if(pSetMan != null && settings != null && settings.getPhoneCallSetting() != PrivacySettings.REAL){ //is not allowed
+        			final Context tmp = who;
+            		isAllowed = false;
+            		new Thread(new Runnable() {
+            		    public void run() {
+            		    	try{
+             		    		Thread.sleep(1000); //wait 1 Second
+             		    	}
+             		    	catch(Exception e){
+             		    		//nothing here
+             		    	}  
+            		    	Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                    		Bundle extras = new Bundle();
+                    		extras.putString("packageName", tmp.getPackageName());
+                    		extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                    		privacy.putExtras(extras);
+                    		tmp.sendBroadcast(privacy);
+                    		Log.i("PrivacyContext","sent privacy intent");
+            		    }
+            		}).start();
+            		pSetMan.notification(who.getPackageName(), 0, PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+        		else{
+        			isAllowed = true;
+        			pSetMan.notification(who.getPackageName(), 0, PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null, settings);
+        		}
+            }
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        	if(who != null)
+       		 	Log.i("PrivacyContext","got exception while trying to resolve intents for package: " + who.getPackageName());
+       	 	else
+       	 		Log.i("PrivacyContext","got exception while trying to resolve intents for unknown package");
+        }
+        //--------------------------------------------------------------------------------------------------------------------------------------------------------
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1504,6 +1676,14 @@ public class Instrumentation {
                 }
             }
         }
+        //fake state
+        try{
+        	if(!isAllowed) return new ActivityResult(requestCode, intent);
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        }
+    	//end faking
         try {
             intent.setAllowFds(false);
             intent.migrateExtraStreamToClipData();

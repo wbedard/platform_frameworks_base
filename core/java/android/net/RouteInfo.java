@@ -236,6 +236,7 @@ public class RouteInfo implements Parcelable {
      * @param routes a Collection of RouteInfos to chose from
      * @param dest the InetAddress your trying to get to
      * @return the RouteInfo from the Collection that best fits the given address
+     * @hide
      */
     public static RouteInfo selectBestRoute(Collection<RouteInfo> routes, InetAddress dest) {
         if ((routes == null) || (dest == null)) return null;
