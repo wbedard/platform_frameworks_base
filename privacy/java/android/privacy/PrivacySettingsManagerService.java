@@ -23,6 +23,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	private static final String TAG = "PrivacySettingsManagerService";
 	private static final String WRITE_PRIVACY_SETTINGS = "android.privacy.WRITE_PRIVACY_SETTINGS";
 	private static final String READ_PRIVACY_SETTINGS = "android.privacy.READ_PRIVACY_SETTINGS";
+	private static final boolean LOG_EVERYTHING = true;
 
 	private PrivacyPersistenceAdapter persistenceAdapter;
 
@@ -58,6 +59,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	}
 
 	public PrivacySettings getSettings(String packageName) throws RemoteException {
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:getSettings for " + packageName + " from UID " + Binder.getCallingUid());
 		if (packageName == null || packageName.isEmpty()) {
 			throw new RemoteException("A packageName must be provided");
 		}
@@ -71,6 +73,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 
 	@Override
 	public List<PrivacySettings> getSettingsAll() throws RemoteException {
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:getSettingsAll from UID " + Binder.getCallingUid());
 		if (enabled || checkCallerCanReadSettings()) {
 			return persistenceAdapter.getSettingsAll();
 		} else {
@@ -83,8 +86,9 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	public List<PrivacySettings> getSettingsMany(List<String> packageNames)
 			throws RemoteException {
 		if (packageNames == null || packageNames.size() == 0) {
-			throw new RemoteException("packageNames must be provided");
+			throw new RemoteException("getSettingsMayn: PackageNames must be provided.");
 		}
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:getSettingsMany (" + packageNames.size() + ") from UID " + Binder.getCallingUid());
 		
 		if (enabled || checkCallerCanReadSettings()) {
 			return persistenceAdapter.getSettingsMany(packageNames);
@@ -99,9 +103,9 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 		checkCallerCanWriteOrThrow();
 		
 		if (settings == null) {
-			throw new RemoteException("settings must be provided");
+			throw new RemoteException("saveSettings: Settings must be provided");
 		}
-		
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:saveSettings for package " + settings.getPackageName() + " from UID " + Binder.getCallingUid());
 		boolean result = persistenceAdapter.saveSettings(settings);
 
 		// Not sure what the files on the file system are for at
@@ -118,8 +122,10 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 		checkCallerCanWriteOrThrow();
 		
 		if (settingsList == null || settingsList.size() == 0) {
-			throw new RemoteException("settings must be provided");
+			throw new RemoteException("saveSettingsMany: Settings must be provided");
 		}
+
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:saveSettingsMany (" + settingsList.size() + ") from UID " + Binder.getCallingUid());
 		
 		List<Boolean> resultList = persistenceAdapter.saveSettingsMany(settingsList);
 		// if result list is null, no entries fot processed
@@ -140,9 +146,16 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 		return result;
 	}
 	
-	public boolean deleteSettings(String packageName) {
+	public boolean deleteSettings(String packageName)
+			throws RemoteException {
 		checkCallerCanWriteOrThrow();
 
+		if (packageName == null) {
+			throw new RemoteException("deleteSettings: PackageName must be provided");
+		}
+
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:deleteSettings for package " + packageName + " from UID " + Binder.getCallingUid());
+		
 		boolean result = persistenceAdapter.deleteSettings(packageName);
 		// update observer if directory exists
 		String observePath = PrivacyPersistenceAdapter.SETTINGS_DIRECTORY + "/"
@@ -161,8 +174,10 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 		checkCallerCanWriteOrThrow();
 		
 		if (packageNames == null || packageNames.size() == 0) {
-			throw new RemoteException("Package names must be provided");
+			throw new RemoteException("deleteSettingsMayn: Package names must be provided");
 		}
+		
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:deleteSettingsMany (" + packageNames.size() + ") from UID " + Binder.getCallingUid());
 		
 		List<Boolean> resultList = persistenceAdapter.deleteSettingsMany(packageNames);
 		// if result list is null, no entries fot processed
@@ -195,6 +210,8 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	@Override
 	public boolean deleteSettingsAll() throws RemoteException {
 		checkCallerCanWriteOrThrow();
+		
+		if (LOG_EVERYTHING) Log.v(TAG, "PrivacySettingsManagerService:deleteSettingsAll from UID " + Binder.getCallingUid());
 		
 		//String will be the package name, boolean whether the delete was successful or not
 		List<SimpleImmutableEntry<String, Boolean>> resultList = persistenceAdapter.deleteSettingsAll();
