@@ -17,9 +17,11 @@ public class PrivacySettingsManager {
 	private static final String TAG = "PrivacySettingsManager";
 
 	public static final String ACTION_PRIVACY_NOTIFICATION = "com.privacy.pdroid.PRIVACY_NOTIFICATION";
-
 	public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
 
+	public static final String EXTENSION_BATCH = "batch";
+
+	
 	private IPrivacySettingsManager service;
 
 	/**
@@ -31,7 +33,15 @@ public class PrivacySettingsManager {
 		//                " UID:" + Binder.getCallingUid());
 		this.service = service;
 	}
-
+	
+	public boolean supportsExtension(String extension) {
+		if (extension.equals(EXTENSION_BATCH)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
 	public PrivacySettings getSettings(String packageName, int uid) {
 		return getSettings(packageName);
 	}
