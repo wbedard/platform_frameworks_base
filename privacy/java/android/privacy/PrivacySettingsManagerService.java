@@ -8,11 +8,17 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Binder;
+import android.os.RemoteException;
+import android.util.Base64;
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -71,7 +77,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
           else return null;
     }
 
-    public boolean saveSettings(PrivacySettings settings) {
+    public boolean saveSettings(PrivacySettings settings) throws RemoteException {
         Log.d(TAG, "saveSettings - checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
         // check permission if not being called by the system process
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
@@ -88,7 +94,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         return result;
     }
     
-    public boolean deleteSettings(String packageName) {
+    public boolean deleteSettings(String packageName) throws RemoteException {
 //        Log.d(TAG, "deleteSettings - " + packageName + " UID: " + uid + " " +
 //        		"checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
         // check permission if not being called by the system process
@@ -111,93 +117,159 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         return result;
     }
     
-    public boolean getIsAuthorizedManagerApp(int pid) {
-    	Log.d(TAG, "getIsAuthorizedManagerApp - Getting packages for PID " + Integer.toString(pid));
+    public boolean getIsAuthorizedManagerApp(int pid) throws RemoteException {
+    	Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp(pid):Getting packages for PID " + Integer.toString(pid));
 
-        String packageName = null;
-        ActivityManager actMgr = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-		for(ActivityManager.RunningAppProcessInfo processInfo : actMgr.getRunningAppProcesses()){
-			if(processInfo.pid == pid){
-				packageName = processInfo.processName;
-			}
-		}
-		if (packageName == null) {
-			Log.d(TAG, "getIsAuthorizedManagerApp - Package name could not be obtained");
-			return false;
-		}
-
-        return getIsAuthorizedManagerApp(packageName);
-  }
-    
-    public boolean getIsAuthorizedManagerApp(String packageName) {
-    	Log.d(TAG, "getIsAuthorizedManagerApp - Running for package " + packageName);
-    	PackageManager pkgMgr = context.getPackageManager();
-    	if (pkgMgr == null) {
-    		Log.d(TAG, "getIsAuthorizedManagerApp - Package manager could not be obtained");
-    		return false; 
+    	String packageName = null;
+    	ActivityManager actMgr = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+    	for(ActivityManager.RunningAppProcessInfo processInfo : actMgr.getRunningAppProcesses()){
+    		if(processInfo.pid == pid){
+    			packageName = processInfo.processName;
+    		}
     	}
-    	
-    	PackageInfo pkgInfo;
-    	try {
-	    	//get the package info so we can get the signatures
-	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
-    	} catch (NameNotFoundException e) {
-    		Log.d(TAG, "getIsAuthorizedManagerApp - Could not get package with name " + packageName);
+    	if (packageName == null) {
+    		Log.e(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp(pid):Package name could not be obtained from PID");
     		return false;
     	}
-    	if (pkgInfo == null) {
-    		Log.d(TAG, "getIsAuthorizedManagerApp - Got null back when retrieving packageInfo for " + packageName);
-    		return false;
+
+    	return getIsAuthorizedManagerApp(packageName);
+    }
+
+    public boolean getIsAuthorizedManagerApp(String packageName) throws RemoteException {
+    	Signature [] signatures = getSignatures(packageName);
+    	if (signatures == null) {
+    		Log.e(TAG, "PrivacySettingsManagerService:getIsAuthorizedManagerApp: Could not obtain signatures for the app");
+    		throw new RemoteException();
     	}
     	
-    	Log.d(TAG, "getIsAuthorizedManagerApp - Retrieving asciiSigs for " + packageName);
-		Set<String> asciiSigs = new HashSet<String>();
-		for (Signature signature : pkgInfo.signatures) {
-			Log.d(TAG, "getIsAuthorizedManagerApp - Found signature " + signature.toCharsString());
-			asciiSigs.add(signature.toCharsString());
-		}
-    	
-        return persistenceAdapter.getIsAuthorizedManagerApp(new String[] {packageName}, asciiSigs, false);
-  }
+    	Set<String> publicKeys = getPublicKeysForSignatures(signatures);
+    	Set<String> signaturesSet = new HashSet<String>();
 
-    
-    public void authorizeManagerApp(String packageName) {
+    	for (Signature signature : signatures) {
+    		signaturesSet.add(signature.toCharsString());
+    	}
+
+    	return persistenceAdapter.getIsAuthorizedManagerApp(packageName, publicKeys, signaturesSet, false);
+    }
+
+    /**
+     * Authorises all the keys on all the current signatures of the app to be
+     * valid for identifying a package with access to the PDroid core.
+     * This will allow future versions of the management app to be automatically 
+     * authorised, if they are signed with the same key
+     * (note that if they are signed with different keys, the user will
+     * have to uninstall the app, as they will not be able to upgrade
+     * due to Android signature restrictions)
+     * 
+     * @param packageName  Name of the package to be authorised
+     * @throws RemoteException
+     */
+    public void authorizeManagerAppKeys(String packageName) throws RemoteException {
     	if (Binder.getCallingUid() != 1000)
     		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
-    	PackageManager pkgMgr = context.getPackageManager();
-    	if (pkgMgr == null) {
-    		Log.d(TAG, "authorizeManagerApp - Package manager could not be obtained");
-    		return; 
+    	Signature [] signatures = getSignatures(packageName);
+    	if (signatures == null || signatures.length == 0) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no signatures found for package:" + packageName);
+    		throw new RemoteException();	
+    	}
+    	Set<String> publicKeys = getPublicKeysForSignatures(signatures);
+    	if (publicKeys == null) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no public keys found for package:" + packageName);
+    		throw new RemoteException();	
+    	}
+
+    	persistenceAdapter.authorizeManagerAppPublicKeys(packageName, publicKeys, false);
+    }
+
+
+    public void authorizeManagerAppKey(String packageName, String publicKey) throws RemoteException {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+    	Signature [] signatures = getSignatures(packageName);
+    	if (signatures == null || signatures.length == 0) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no signatures found for package:" + packageName);
+    		throw new RemoteException();	
+    	}
+    	Set<String> publicKeys = getPublicKeysForSignatures(signatures);
+    	if (publicKeys == null) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no public keys found for package:" + packageName);
+    		throw new RemoteException();	
     	}
     	
-    	PackageInfo pkgInfo;
-    	try {
-	    	//get the package info so we can get the signatures
-	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
-    	} catch (NameNotFoundException e) {
-    		Log.d(TAG, "authorizeManagerApp - Could not get package with name " + packageName);
-    		return;
+    	if (publicKeys.contains(publicKey)) {
+    		Set<String> inPublicKeys = new HashSet<String>();
+    		inPublicKeys.add(publicKey);
+
+    		persistenceAdapter.authorizeManagerAppPublicKeys(packageName, inPublicKeys, false);
     	}
-    	if (pkgInfo == null) {
-    		Log.d(TAG, "authorizeManagerApp - Got null back when retrieving packageInfo for " + packageName);
-    		return;
+    }
+
+
+    @Override
+    public void authorizeManagerAppSignatures(String packageName)
+    		throws RemoteException {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+    	Signature [] signatures = getSignatures(packageName);
+    	if (signatures == null || signatures.length == 0) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no signatures found for package:" + packageName);
+    		throw new RemoteException();	
     	}
-    	
-		Set<String> asciiSigs = new HashSet<String>();
-		for (Signature signature : pkgInfo.signatures) {
-			asciiSigs.add(signature.toCharsString());
-		}
-    	
-        persistenceAdapter.authorizeManagerApp(packageName, asciiSigs, false);
-  }
-    
+    	Set<String> publicKeys = getPublicKeysForSignatures(signatures);
+    	if (publicKeys == null) {
+    		Log.e(TAG, "PrivacySettingsManagerService:authorizeManagerApp: no public keys found for package:" + packageName);
+    		throw new RemoteException();	
+    	}
+
+    	persistenceAdapter.authorizeManagerAppPublicKeys(packageName, publicKeys, false);
+    }
+
+    // These functions (and their equivalents in the persistence adapter could
+    // potentially be merged and a flag passed to identify what is being deleted,
+    // simply to reduce the number of functions
+
+    /**
+     * Removes all authorisation (signature and public key) from the application
+     * @param packageName  the application package name from which to remove all authorisation
+     */
+    @Override
     public void deauthorizeManagerApp(String packageName) {
     	if (Binder.getCallingUid() != 1000)
     		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
-        persistenceAdapter.deauthorizeManagerApp(packageName, false);
-  }
+    	persistenceAdapter.deauthorizeManagerApp(packageName, false);
+    }
+
+    /**
+     * Removes all public key authorisation from the application.
+     * If you want to change the authorised public keys for an application, use
+     * 'authorizeManagerAppKeys'
+     * @param packageName  the application package name from which to remove all authorisation
+     */
+    @Override
+    public void deauthorizeManagerAppKeys(String packageName) {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+    	persistenceAdapter.deauthorizeManagerAppKeys(packageName, false);
+    }
+
+    /**
+     * Removes all signature authorisation from the application.
+     * If you want to change the authorised signatures for an application, use
+     * 'authorizeManagerAppSignatures'
+     * @param packageName  the application package name from which to remove all authorisation
+     */
+    @Override
+    public void deauthorizeManagerAppSignatures(String packageName) {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+    	persistenceAdapter.deauthorizeManagerAppSignatures(packageName, false);
+    }
     
     public double getVersion() {
         return VERSION;
@@ -253,5 +325,72 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         } else {
             return false;
         }
+    }
+    
+    /**
+     * Returns all signatures from a package
+     * @param packageName  name of package for which to read signature
+     * @return  array of signatures from the package
+     * @throws RemoteException
+     */
+    private Signature [] getSignatures(String packageName) throws RemoteException {
+    	PackageManager pkgMgr = context.getPackageManager();
+    	if (pkgMgr == null) {
+    		Log.d(TAG, "PrivacySettingsManagerService:getSignatures: Package manager could not be obtained");
+    		throw new RemoteException();
+    	}
+    	
+    	PackageInfo pkgInfo;
+    	try {
+	    	//get the package info so we can get the signatures
+	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+    	} catch (NameNotFoundException e) {
+    		Log.e(TAG, "PrivacySettingsManagerService:getSignatures: package not found:" + packageName);
+    		throw new RemoteException();
+    	}
+    	if (pkgInfo == null) {
+    		Log.e(TAG, "PrivacySettingsManagerService:getSignatures: getPackageInfo returned null for package:" + packageName);
+    		throw new RemoteException();
+    	}
+    	
+		Log.d(TAG, "PrivacySettingsManagerService:getSignatures: retrieving signatures for " + packageName);
+		
+		return pkgInfo.signatures;
+    }
+
+    
+    /**
+     * Extracts base64-encoded public keys from the provided signatures 
+     * @param signatures  signatures from which to extract keys
+     * @return base64-encoded public keys
+     * @throws RemoteException
+     */
+    private Set<String> getPublicKeysForSignatures(Signature [] signatures) throws RemoteException {
+		CertificateFactory certFactory;
+		try {
+			certFactory = CertificateFactory.getInstance("X509");
+		} catch (CertificateException e) {
+			Log.e(TAG, "PrivacyServicesManagerService:getPublicKeysForSignature:X509 certificate factory is not available", e);
+			throw new RemoteException();
+		}
+		
+		Set<String> publicKeys = new HashSet<String>();
+	
+		//parse certificate details from the signature
+		for (Signature signature : signatures) {
+			byte [] sigBytes = signature.toByteArray();
+			try {
+				X509Certificate certificate = (X509Certificate)certFactory.generateCertificate(new ByteArrayInputStream(sigBytes));
+				publicKeys.add(Base64.encodeToString(certificate.getPublicKey().getEncoded(), Base64.DEFAULT));
+			} catch (CertificateException e) {
+				Log.e(TAG, "PrivacyServicesManagerService:getPublicKeysForSignature:CertificateException occurred", e);
+				throw new RemoteException();
+			} catch (ClassCastException e) {
+				Log.e(TAG, "PrivacyServicesManagerService:getPublicKeysForSignature:Signature certificate was not an X509 certificate", e);
+				throw new RemoteException();
+			}
+		}
+		
+		return publicKeys;
     }
 }

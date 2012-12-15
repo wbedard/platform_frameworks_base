@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -49,7 +50,8 @@ public class PrivacyPersistenceAdapter {
 
     private static final String TABLE_SETTINGS = "settings";
     
-    private static final String TABLE_MANAGER_APPS = "manager_apps";
+    private static final String TABLE_MANAGER_APPS_SIGNATURES = "manager_apps_signatures";
+    private static final String TABLE_MANAGER_APPS_PUBKEYS = "manager_apps_pubkeys";
     
     private static final String TABLE_MAP = "map";
     
@@ -108,8 +110,11 @@ public class PrivacyPersistenceAdapter {
         " switchWifiStateSetting INTEGER" +
         ");";
     
-    private static final String CREATE_TABLE_MANAGER_APPS =
-    	"CREATE TABLE IF NOT EXISTS " + TABLE_MANAGER_APPS + " ( packageName TEXT, signature TEXT, PRIMARY KEY (packageName, signature) )";
+    private static final String CREATE_TABLE_MANAGER_APPS_SIGNATURES =
+    	"CREATE TABLE IF NOT EXISTS " + TABLE_MANAGER_APPS_SIGNATURES + " ( _id INTEGER PRIMARY KEY AUTOINCREMENT, packageName TEXT, signature TEXT )";
+
+    private static final String CREATE_TABLE_MANAGER_APPS_PUBKEYS =
+        	"CREATE TABLE IF NOT EXISTS " + TABLE_MANAGER_APPS_PUBKEYS + " ( _id INTEGER PRIMARY KEY AUTOINCREMENT, packageName TEXT, public_key TEXT )";
     
     private static final String CREATE_TABLE_MAP = 
         "CREATE TABLE IF NOT EXISTS " + TABLE_MAP + " ( name TEXT PRIMARY KEY, value TEXT );";
@@ -219,7 +224,8 @@ public class PrivacyPersistenceAdapter {
                         }
                         
                         // need to add the management_apps table
-	                db.execSQL(CREATE_TABLE_MANAGER_APPS); 
+	                db.execSQL(CREATE_TABLE_MANAGER_APPS_PUBKEYS);
+	                db.execSQL(CREATE_TABLE_MANAGER_APPS_SIGNATURES);
 	                db.setTransactionSuccessful();
                     }
                 } catch (Exception e) {
@@ -239,7 +245,8 @@ public class PrivacyPersistenceAdapter {
                 // need to add the management_apps table
             	try {
 	                if (db != null && db.isOpen()) {
-	                    db.execSQL(CREATE_TABLE_MANAGER_APPS); 
+	                    db.execSQL(CREATE_TABLE_MANAGER_APPS_PUBKEYS);
+	                    db.execSQL(CREATE_TABLE_MANAGER_APPS_SIGNATURES);
 	                    db.setTransactionSuccessful();
 	                }
                 } catch (Exception e) {
@@ -273,7 +280,9 @@ public class PrivacyPersistenceAdapter {
     private int getDbVersion() {
         int version = -1;
         // check if the table "map" exists; if it doesn't -> return version 1
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
         SQLiteDatabase db = getReadableDatabase();
         try {
             Cursor c = rawQuery(db, "SELECT name FROM sqlite_master WHERE type='table' AND name='" + TABLE_MAP + "';");
@@ -283,13 +292,7 @@ public class PrivacyPersistenceAdapter {
                     version = 1;
                 }
                 c.close();
-                synchronized (readingThreads) {
-                    readingThreads--;
-                    // only close DB if no other threads are reading
-                    if (readingThreads == 0 && db != null && db.isOpen()) {
-                        db.close();
-                    }
-                }
+        		closeIdleDatabase();
             } else {
                 Log.e(TAG, "getDbVersion - failed to check if table map exists (cursor is null)");
             }
@@ -313,7 +316,9 @@ public class PrivacyPersistenceAdapter {
     }
     
     public String getValue(String name) {
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
         SQLiteDatabase db = getReadableDatabase();
         Cursor c;
         String output = null;
@@ -331,13 +336,7 @@ public class PrivacyPersistenceAdapter {
             Log.w(TAG, "getValue - could not get value for name: " + name, e);
         }
         
-        synchronized (readingThreads) {
-            readingThreads--;
-            // only close DB if no other threads are reading
-            if (readingThreads == 0 && db != null && db.isOpen()) {
-                db.close();
-            }
-        }
+		closeIdleDatabase();
         return output;
     }
     
@@ -348,7 +347,7 @@ public class PrivacyPersistenceAdapter {
         values.put("value", value);
         SQLiteDatabase db = getWritableDatabase();
         boolean success = db.replace(TABLE_MAP, null, values) != -1;
-        if (readingThreads == 0 && db != null && db.isOpen()) db.close();
+        closeIdleDatabase();
         return success;
     }
     
@@ -361,7 +360,9 @@ public class PrivacyPersistenceAdapter {
         }
         
         // indicate that the DB is being read to prevent closing by other threads
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
 //        Log.d(TAG, "getSettings - settings request for package: " + packageName + " readingThreads: " + readingThreads);
         
         SQLiteDatabase db;
@@ -369,7 +370,7 @@ public class PrivacyPersistenceAdapter {
             db = getReadableDatabase();
         } catch (SQLiteException e) {
             Log.e(TAG, "getSettings - database could not be opened", e);
-            readingThreads--;
+    		closeIdleDatabase();
             return s;
         }
             
@@ -415,13 +416,7 @@ public class PrivacyPersistenceAdapter {
 //            if (forceCloseDB && db != null && db.isOpen()) {
 //                db.close();
 //            } else {
-            synchronized (readingThreads) {
-                readingThreads--;
-                // only close DB if no other threads are reading
-                if (readingThreads == 0 && db != null && db.isOpen()) {
-                    db.close();
-                }
-            }
+    		closeIdleDatabase();
 //            }
         }
         
@@ -524,7 +519,9 @@ public class PrivacyPersistenceAdapter {
         
         
         
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
         Cursor c = null;
@@ -621,133 +618,260 @@ public class PrivacyPersistenceAdapter {
         } finally {
             db.endTransaction();
             if (c != null) c.close();
-            synchronized (readingThreads) {
-                readingThreads--;
-                // only close DB if no other threads are reading
-                if (readingThreads == 0 && db != null && db.isOpen()) {
-                    db.close();
-                }
-            }
+    		closeIdleDatabase();
         }
 
         return result;
     }
     
-    
-    public synchronized boolean getIsAuthorizedManagerApp(String [] packageNames, Set<String> signatures, boolean forceCloseDB) {
-    	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Starting with " + Integer.toString(signatures.size()) + " items");
+    /**
+     * Checks if a package is authorised, using the passed publicKeys and signatures
+     * to perform checks
+     * @param packageName  package for which to check authorisation
+     * @param publicKeys  set of public keys from the package
+     * @param signatures  set of signatures attached to the package
+     * @param forceCloseDB
+     * @return
+     */
+    public synchronized boolean getIsAuthorizedManagerApp(String packageName, Set<String> publicKeys, Set<String> signatures, boolean forceCloseDB) {
+    	
     	Boolean isAuthorizedManagerApp = false;
-        if (packageNames == null || packageNames.length < 1) {
-            Log.e(TAG, "getIsAuthorizedManagerApp - insufficient application identifier - package name is required");
-            return isAuthorizedManagerApp;
+        if (packageName == null) {
+    		Log.e(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package name must be provided");
+    		throw new InvalidParameterException();
         }
         
         // indicate that the DB is being read to prevent closing by other threads
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
 
-        SQLiteDatabase db;
-        try {
-            db = getReadableDatabase();
-        } catch (SQLiteException e) {
-            Log.e(TAG, "getIsAuthorizedManagerApp - database could not be opened", e);
-            readingThreads--;
-            return isAuthorizedManagerApp;
-        }
+    	SQLiteDatabase db;
+    	try {
+    		db = getReadableDatabase();
+    	} catch (SQLiteException e) {
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: Database could not be opened", e);
+    		throw new SQLiteException();
+    	}
 
-        Cursor c = null;
+        Cursor cursor = null;
         
         //While it would be better from an isolation perspective to have the comparisons outside the database part,
         //by doing the comparisons here we can short circuit the checks as soon as we get a match
+        
         try {
-        	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Running query");
+        	int columnNum;
         	
-        	for (String packageName : packageNames) {
-	            c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
-	
-	            if (c != null) {
-	            	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - cursor not null");
-	            	if (c.getCount() == 0) {
-	            		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - cursor getCount = 0");
-	            		//if there are no entries for the app, then it doesn't have permission to update settings
-	            		return false;
-	            	} else if (c.moveToFirst()) {
-	            		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Result count " + Integer.toString(c.getCount()));
+        	if (publicKeys != null && publicKeys.size() > 0) {
+	            //check the public keys first, then the signatures (because public keys, I expect, will be more common authorisation)
+	            cursor = query(db, TABLE_MANAGER_APPS_PUBKEYS, new String [] {"public_key"}, "packageName=?", new String[] { packageName }, null, null, "public_key", null);
+	            
+	            if (cursor == null) {
+	            	Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: public_key list cursor is null:" + packageName);
+	        		//if there are no public key entries for the app, then it doesn't have permission based on public keys
+	            } else {
+	            	if (cursor.getCount() == 0) {
+	                	Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: public_key list cursor size is 0:" + packageName);
+	            		//if there are no public key entries for the app, then it doesn't have permission based on public keys
+	            	} else if (cursor.moveToFirst()) {
+	            		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: public_key list cursor size is " + Integer.toString(cursor.getCount()) + ":" + packageName);
 	            		//we know the app is listed, so now we convert the signatures to something useful
-	            		int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+	            		columnNum = cursor.getColumnIndex("public_key"); //could probably use a constant for this, to (minimally) increase performance
 	            		do {
 	            			//as soon as we get a match, we can exit (one signature match is enough)
-	                		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Check if signature present " + c.getString(signatureColumn));
+	                		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: public_key list cursor size is " + Integer.toString(cursor.getCount()) + ":" + packageName);
 	
-	            			if (signatures.contains(c.getString(signatureColumn))) {
-	            				Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Signature matched: app is permitted");
+	            			if (publicKeys.contains(cursor.getString(columnNum))) {
+	                    		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: Is authorised manager app:" + packageName + "  : public key matched " + cursor.getString(columnNum));
 	            				isAuthorizedManagerApp = true;
 	            				break;
 	            			}
-	            			Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Moving to next row");
-	            		} while (c.moveToNext());
+	            		} while (cursor.moveToNext());
 	            	}
 	            }
+	            if (cursor != null) {
+	            	cursor.close();
+	            }
+        	}
+            
+            // don't need to check signatures if we already have a matched public key
+            if (!isAuthorizedManagerApp) {
+	            // now check the signatures
+            	if (signatures != null && signatures.size() > 0) {
+		            cursor = query(db, TABLE_MANAGER_APPS_SIGNATURES, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "public_key", null);
+		
+		            if (cursor == null) {
+		            	Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: signature list cursor is null:" + packageName);
+		        		//if there are no public key entries for the app, then it doesn't have permission based on public keys
+		            } else {
+		            	if (cursor.getCount() == 0) {
+		                	Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: signature list cursor size is 0:" + packageName);
+		            		//if there are no public key entries for the app, then it doesn't have permission based on public keys
+		            	} else if (cursor.moveToFirst()) {
+		            		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: signature list cursor size is " + Integer.toString(cursor.getCount()) + ":" + packageName);
+		            		//we know the app is listed, so now we convert the signatures to something useful
+		            		columnNum = cursor.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+		            		do {
+		            			//as soon as we get a match, we can exit (one signature match is enough)
+		                		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: public_key list cursor size is " + Integer.toString(cursor.getCount()) + ":" + packageName);
+		
+		            			if (signatures.contains(cursor.getString(columnNum))) {
+		                    		Log.d(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: Is authorised manager app:" + packageName + "  : public key matched " + cursor.getString(columnNum));
+		            				isAuthorizedManagerApp = true;
+		            				break;
+		            			}
+		            		} while (cursor.moveToNext());
+		            	}
+		            }
+            	}
             }
         } catch (Exception e) {
-            Log.e(TAG, "getIsAuthorizedManagerApp - Error occurred while reading database for signatures", e);
-            e.printStackTrace();
-            if (c != null) c.close();
-        } finally {
-            if (c != null) c.close();
-            synchronized (readingThreads) {
-                readingThreads--;
-                // only close DB if no other threads are reading
-                if (readingThreads == 0 && db != null && db.isOpen()) {
-                    db.close();
-                }
-            }
+            if (cursor != null) cursor.close();
+            closeIdleDatabase();
+            Log.e(TAG, "PrivacyPersistenceAdapter:getIsAuthorizedManagerApp:package: Exception occurred: " + packageName, e);
+            throw new RuntimeException();
         }
+        if (cursor != null) cursor.close();
+        closeIdleDatabase();
+        
         return isAuthorizedManagerApp;
     }
 
-    public synchronized void authorizeManagerApp(String packageName, Set<String> signatures, boolean forceCloseDB) {
+    /**
+     * For a specific package name, specifies a set of public keys which if present
+     * indicate that the app is authorised. All public keys already on the app
+     * but not passed in publicKeys through are removed. 
+     * @param packageName  package to which authorisation applies
+     * @param publicKeys  public keys which are considered valid authorisation
+     * @param forceCloseDB
+     */
+    public synchronized void authorizeManagerAppPublicKeys(String packageName, Set<String> publicKeys, boolean forceCloseDB) {
     	if (packageName == null) {
-    		Log.e(TAG, "authorizeManagerApp - insufficient application identifier - package name is required");
-    		return;
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppPublicKeys:package name must be provided");
+    		throw new InvalidParameterException();
     	}
 
     	// indicate that the DB is being read to prevent closing by other threads
-    	readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
 
     	SQLiteDatabase db;
     	try {
     		db = getWritableDatabase();
     	} catch (SQLiteException e) {
-    		Log.e(TAG, "authorizeManagerApp - database could not be opened", e);
-    		readingThreads--;
-    		return;
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppPublicKeys: Database could not be opened", e);
+    		throw new SQLiteException();
     	}
 
     	Cursor c = null;
     	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
 
     	try {
-    		c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
+    		c = query(db, TABLE_MANAGER_APPS_PUBKEYS, new String [] {"public_key"}, "packageName=?", new String[] { packageName }, null, null, "public_key", null);
 
     		if (c != null && c.getCount() != 0 && c.moveToFirst()) {
-    			int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+    			int publicKeysColumn = c.getColumnIndex("public_key"); //could probably use a constant for this, to (minimally) increase performance, but this is the 'right' was of doing it
     			//there are one or more entries for this already - we need to remove ones with non-matching signatures before adding any new entries
-    			List<String> sigsToDelete = new LinkedList<String>();
+    			List<String> publicKeysToDelete = new LinkedList<String>();
     			do {
-    				if (signatures.contains(c.getString(signatureColumn))) {
-    					signatures.remove(c.getString(signatureColumn));
+    				if (publicKeys.contains(c.getString(publicKeysColumn))) {
+    					publicKeys.remove(c.getString(publicKeysColumn));
     				} else {
-    					sigsToDelete.add(c.getString(signatureColumn));
+    					publicKeysToDelete.add(c.getString(publicKeysColumn));
     				}
     			} while (c.moveToNext());
 
     			//delete non-matching signature entries
-    			if (sigsToDelete.size() > 0) {
+    			if (publicKeysToDelete.size() > 0) {
 	    			String [] whereArgs = new String [2];
 	    			whereArgs[0] = packageName;
-	    			for (String sigToDelete : sigsToDelete) {
-	    				whereArgs[1] = sigToDelete;
-	    				db.delete(TABLE_MANAGER_APPS, "packageName=? AND signature=?", whereArgs);
+	    			for (String pubKeyToDelete : publicKeysToDelete) {
+	    				whereArgs[1] = pubKeyToDelete;
+	    				db.delete(TABLE_MANAGER_APPS_PUBKEYS, "packageName=? AND public_key=?", whereArgs);
+	    			}
+    			}
+    		}
+    		
+    		ContentValues values = new ContentValues();
+    		values.put("packageName", packageName);
+    		for (String publicKey : publicKeys) {
+    			values.put("public_key", publicKey);
+    			db.insert(TABLE_MANAGER_APPS_PUBKEYS, null, values);
+    		}
+    		
+    		db.setTransactionSuccessful();
+    		
+    	} catch (Exception e) {
+    		if (c != null) c.close();
+    		db.endTransaction();
+    		closeIdleDatabase();
+    		// Catching everything like this is horrible, but we need to catch all exceptions and handle 
+    		// them in the function, otherwise we could be left with hanging 'readingThreads'
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppPublicKeys: Exception occurred: " + packageName, e);
+    		throw new RuntimeException();
+    	}
+
+		if (c != null) c.close();
+		db.endTransaction();
+		closeIdleDatabase();
+    }
+
+    /**
+     * For a specific package name, specifies a set of public keys which if present
+     * indicate that the app is authorised. All public keys already on the app
+     * but not passed in publicKeys through are removed. 
+     * @param packageName  package name to which authorisation applies
+     * @param signatures  signatures to authorise
+     * @param forceCloseDB
+     */
+    public synchronized void authorizeManagerAppSignatures(String packageName, Set<String> signatures, boolean forceCloseDB) {
+    	if (packageName == null) {
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppSignatures:package name must be provided");
+    		throw new InvalidParameterException();
+    	}
+
+    	// indicate that the DB is being read to prevent closing by other threads
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
+
+    	SQLiteDatabase db;
+    	try {
+    		db = getWritableDatabase();
+    	} catch (SQLiteException e) {
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppSignatures: Database could not be opened", e);
+    		throw new SQLiteException();
+    	}
+
+    	Cursor c = null;
+    	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
+
+    	try {
+    		c = query(db, TABLE_MANAGER_APPS_SIGNATURES, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "public_key", null);
+
+    		if (c != null && c.getCount() != 0 && c.moveToFirst()) {
+    			int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance, but this is the 'right' was of doing it
+    			//there are one or more entries for this already - we need to remove ones with non-matching signatures before adding any new entries
+    			List<String> signaturesToDelete = new LinkedList<String>();
+    			do {
+    				if (signatures.contains(c.getString(signatureColumn))) {
+    					signatures.remove(c.getString(signatureColumn));
+    				} else {
+    					signaturesToDelete.add(c.getString(signatureColumn));
+    				}
+    			} while (c.moveToNext());
+
+    			//delete non-matching signature entries
+    			if (signaturesToDelete.size() > 0) {
+	    			String [] whereArgs = new String [2];
+	    			whereArgs[0] = packageName;
+	    			for (String pubKeyToDelete : signaturesToDelete) {
+	    				whereArgs[1] = pubKeyToDelete;
+	    				db.delete(TABLE_MANAGER_APPS_SIGNATURES, "packageName=? AND signature=?", whereArgs);
 	    			}
     			}
     		}
@@ -755,66 +879,155 @@ public class PrivacyPersistenceAdapter {
     		ContentValues values = new ContentValues();
     		values.put("packageName", packageName);
     		for (String signature : signatures) {
-    			values.put("signature", signature);
-    			db.insert(TABLE_MANAGER_APPS, null, values);
+    			values.put("public_key", signature);
+    			db.insert(TABLE_MANAGER_APPS_SIGNATURES, null, values);
     		}
     		
     		db.setTransactionSuccessful();
     		
     	} catch (Exception e) {
-    		Log.e(TAG, "authorizeManagerApp - Error occurred while reading database for signatures from : " + packageName, e);
-    		e.printStackTrace();
-    		if (c != null) c.close();
-    	} finally {
     		if (c != null) c.close();
     		db.endTransaction();
-    		synchronized (readingThreads) {
-    			readingThreads--;
-    			// only close DB if no other threads are reading
-    			if (readingThreads == 0 && db != null && db.isOpen()) {
-    				db.close();
-    			}
-    		}
+    		closeIdleDatabase();
+    		// Catching everything like this is horrible, but we need to catch all exceptions and handle 
+    		// them in the function, otherwise we could be left with hanging 'readingThreads'
+    		Log.e(TAG, "PrivacyPersistenceAdapter:authorizeManagerAppSignatures: Exception occurred: " + packageName, e);
+    		throw new RuntimeException();
     	}
+
+		if (c != null) c.close();
+		db.endTransaction();
+		closeIdleDatabase();
     }
-    
+
+    /**
+     * Fully deauthorise an app: deauthorises all public keys and signatures for the app
+     * @param packageName  package to deauthorise
+     * @param forceCloseDB
+     */
     public synchronized void deauthorizeManagerApp(String packageName, boolean forceCloseDB) {
     	if (packageName == null) {
-    		Log.e(TAG, "deauthorizeManagerApp - insufficient application identifier - package name is required");
-    		return;
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerApp:package name must be provided");
+    		throw new InvalidParameterException();
     	}
 
     	// indicate that the DB is being read to prevent closing by other threads
-    	readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
 
     	SQLiteDatabase db;
     	try {
     		db = getWritableDatabase();
     	} catch (SQLiteException e) {
-    		Log.e(TAG, "deauthorizeManagerApp - database could not be opened", e);
-    		readingThreads--;
-    		return;
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerApp: Database could not be opened", e);
+    		throw new SQLiteException();
     	}
-
+    	
     	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
 
     	try {
-    		db.delete(TABLE_MANAGER_APPS, "packageName=?", new String [] {packageName});    		
+    		db.delete(TABLE_MANAGER_APPS_PUBKEYS, "packageName=?", new String [] {packageName});
+    		db.delete(TABLE_MANAGER_APPS_SIGNATURES, "packageName=?", new String [] {packageName});
     		db.setTransactionSuccessful();
     	} catch (Exception e) {
-    		Log.e(TAG, "deauthorizeManagerApp - Error occurred while deleting rights for : " + packageName, e);
-    		e.printStackTrace();
-    	} finally {
     		db.endTransaction();
-    		synchronized (readingThreads) {
-    			readingThreads--;
-    			// only close DB if no other threads are reading
-    			if (readingThreads == 0 && db != null && db.isOpen()) {
-    				db.close();
-    			}
-    		}
+    		closeIdleDatabase();
+    		// Catching everything like this is horrible, but we need to catch all exceptions and handle 
+    		// them in the function, otherwise we could be left with hanging 'readingThreads'
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerApp: Error occurred while deleting rights for : " + packageName, e);
+    		throw new RuntimeException();
     	}
-    	return;
+    	
+		db.endTransaction();
+		closeIdleDatabase();
+    }
+
+    /**
+     * Deauthorises all public keys for an app, but leaves the signature authorisations intact
+     * @param packageName  package to deauthorise
+     * @param forceCloseDB
+     */
+    public synchronized void deauthorizeManagerAppKeys(String packageName, boolean forceCloseDB) {
+    	if (packageName == null) {
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppKeys:package name must be provided");
+    		throw new InvalidParameterException();
+    	}
+
+    	// indicate that the DB is being read to prevent closing by other threads
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
+
+    	SQLiteDatabase db;
+    	try {
+    		db = getWritableDatabase();
+    	} catch (SQLiteException e) {
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppKeys: Database could not be opened", e);
+    		throw new SQLiteException();
+    	}
+    	
+    	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
+
+    	try {
+    		db.delete(TABLE_MANAGER_APPS_PUBKEYS, "packageName=?", new String [] {packageName});
+    		db.setTransactionSuccessful();
+    	} catch (Exception e) {
+    		db.endTransaction();
+    		closeIdleDatabase();
+    		// Catching everything like this is horrible, but we need to catch all exceptions and handle 
+    		// them in the function, otherwise we could be left with hanging 'readingThreads'
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppKeys: Error occurred while deleting rights for : " + packageName, e);
+    		throw new RuntimeException();
+    	}
+    	
+		db.endTransaction();
+		closeIdleDatabase();
+    }
+    
+    /**
+     * Deauthorises all signatures for an app, but leaves the public key authorisations intact
+     * @param packageName  package to deauthorise
+     * @param forceCloseDB
+     */
+    public synchronized void deauthorizeManagerAppSignatures(String packageName, boolean forceCloseDB) {
+    	if (packageName == null) {
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppSignatures:package name must be provided");
+    		throw new InvalidParameterException();
+    	}
+
+    	// indicate that the DB is being read to prevent closing by other threads
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
+
+    	SQLiteDatabase db;
+    	try {
+    		db = getWritableDatabase();
+    	} catch (SQLiteException e) {
+    		closeIdleDatabase();
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppSignatures: Database could not be opened", e);
+    		throw new SQLiteException();
+    	}
+    	
+    	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
+
+    	try {
+    		db.delete(TABLE_MANAGER_APPS_SIGNATURES, "packageName=?", new String [] {packageName});
+    		db.setTransactionSuccessful();
+    	} catch (Exception e) {
+    		db.endTransaction();
+    		closeIdleDatabase();
+    		// Catching everything like this is horrible, but we need to catch all exceptions and handle 
+    		// them in the function, otherwise we could be left with hanging 'readingThreads'
+    		Log.e(TAG, "PrivacyPersistenceAdapter:deauthorizeManagerAppSignatures: Error occurred while deleting rights for : " + packageName, e);
+    		throw new RuntimeException();
+    	}
+    	
+		db.endTransaction();
+		closeIdleDatabase();
     }
     
     /**
@@ -979,7 +1192,9 @@ public class PrivacyPersistenceAdapter {
         
 //        Log.d(TAG, "purgeSettings - purging database");
         // delete obsolete entries from DB and update outdated entries
-        readingThreads++;
+    	synchronized(readingThreads) {
+    		readingThreads++;
+    	}
         SQLiteDatabase db = getReadableDatabase();
         Cursor c = null;
         try {
@@ -1005,13 +1220,7 @@ public class PrivacyPersistenceAdapter {
             result = false;
         } finally {
             if (c != null) c.close();
-            synchronized (readingThreads) {
-                readingThreads--;
-                // only close DB if no other threads are reading
-                if (readingThreads == 0 && db != null && db.isOpen()) {
-                    db.close();
-                }
-            }
+    		closeIdleDatabase();
         }
         return result;
     }
@@ -1033,7 +1242,8 @@ public class PrivacyPersistenceAdapter {
             db.execSQL(CREATE_TABLE_SETTINGS);
             db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
             db.execSQL(CREATE_TABLE_MAP);
-            db.execSQL(CREATE_TABLE_MANAGER_APPS);
+            db.execSQL(CREATE_TABLE_MANAGER_APPS_PUBKEYS);
+            db.execSQL(CREATE_TABLE_MANAGER_APPS_SIGNATURES);
             db.execSQL(INSERT_VERSION);
             db.execSQL(INSERT_ENABLED);
             db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
@@ -1071,4 +1281,18 @@ public class PrivacyPersistenceAdapter {
 
         return db;
     }
+    
+    /** 
+     * If there are no more threads reading the database, close it.
+     * Otherwise, reduce the number of reading threads by one
+     */
+	private void closeIdleDatabase() {
+		synchronized(readingThreads) {
+			readingThreads--;
+			// only close DB if no other threads are reading
+			if (readingThreads == 0 && db != null && db.isOpen()) {
+				db.close();
+			}
+		}
+	}
 }

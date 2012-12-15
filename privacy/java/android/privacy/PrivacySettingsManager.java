@@ -212,17 +212,42 @@ public class PrivacySettingsManager {
     	}
     }
     
-    public void authorizeManagerApp(String packageName) {
+    public void authorizeManagerAppSignatures(String packageName) {
     	try {
     		if (service != null) {
-    			service.authorizeManagerApp(packageName);
+    			service.authorizeManagerAppSignatures(packageName);
     		} else {
-    			Log.e(TAG, "authorizeManagerApp - PrivacySettingsManagerService is null");
+    			Log.e(TAG, "authorizeManagerAppSignatures - PrivacySettingsManagerService is null");
     		}
     	} catch (RemoteException e) {
     		e.printStackTrace();
     	}
     }
+    
+    public void authorizeManagerAppKeys(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerAppKeys(packageName);
+    		} else {
+    			Log.e(TAG, "authorizeManagerAppKeys - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void authorizeManagerAppKey(String packageName, String publicKey) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerAppKey(packageName, publicKey);
+    		} else {
+    			Log.e(TAG, "authorizeManagerAppKey - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
     
     public void deauthorizeManagerApp(String packageName) {
     	try {
@@ -230,6 +255,30 @@ public class PrivacySettingsManager {
     			service.deauthorizeManagerApp(packageName);
     		} else {
     			Log.e(TAG, "deauthorizeManagerApp - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void deauthorizeManagerAppSignatures(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerAppSignatures(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerAppSignature - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void deauthorizeManagerAppKeys(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerAppKeys(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerAppKeys - PrivacySettingsManagerService is null");
     		}
     	} catch (RemoteException e) {
     		e.printStackTrace();
