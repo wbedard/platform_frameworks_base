@@ -75,11 +75,12 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         Log.d(TAG, "saveSettings - checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
         // check permission if not being called by the system process
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
-        	if (Binder.getCallingUid() != 1000)
+        	if (Binder.getCallingUid() != 1000) {
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
         			if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
         				throw new SecurityException("Application must be authorised to save changes");
         			}
+        	}
 	//}
         Log.d(TAG, "saveSettings - " + settings);
         boolean result = persistenceAdapter.saveSettings(settings);
@@ -92,11 +93,12 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 //        		"checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
         // check permission if not being called by the system process
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){//enforce permission, because declaring in manifest doesn't work well -> let my addon package delete settings
-        	if (Binder.getCallingUid() != 1000)
+        	if (Binder.getCallingUid() != 1000) {
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
 					if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
 						throw new SecurityException("Application must be authorised to save changes");
 					}
+        	}
 	//}
         boolean result = persistenceAdapter.deleteSettings(packageName);
         // update observer if directory exists
