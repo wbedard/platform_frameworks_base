@@ -218,7 +218,9 @@ public class PrivacyPersistenceAdapter {
                             }
                         }
                         
-                        db.setTransactionSuccessful();
+                        // need to add the management_apps table
+	                db.execSQL(CREATE_TABLE_MANAGER_APPS); 
+	                db.setTransactionSuccessful();
                     }
                 } catch (Exception e) {
                     if (db != null && db.isOpen()) {
@@ -234,11 +236,6 @@ public class PrivacyPersistenceAdapter {
                 break;
                 
             case 4:
-                // most current version, do nothing
-                Log.w(TAG, "upgradeDatabase - trying to upgrade most current DB version");
-                break;
-                
-            case 5:
                 // need to add the management_apps table
             	try {
 	                if (db != null && db.isOpen()) {
@@ -256,7 +253,11 @@ public class PrivacyPersistenceAdapter {
                 }
                 
                 break;
-
+                
+            case 5:
+                // most current version, do nothing
+                Log.w(TAG, "upgradeDatabase - trying to upgrade most current DB version");
+                break;
         }
         
         if (db != null && db.isOpen()) {
