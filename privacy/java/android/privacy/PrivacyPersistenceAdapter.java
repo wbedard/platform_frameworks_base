@@ -16,7 +16,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Responsible for persisting privacy settings to built-in memory
@@ -31,7 +33,7 @@ public class PrivacyPersistenceAdapter {
 
     private static final String DATABASE_FILE = "/data/system/privacy.db";
     
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
     
     public static final int DUMMY_UID = -1;
     
@@ -46,6 +48,8 @@ public class PrivacyPersistenceAdapter {
     public static final String SETTINGS_DIRECTORY = "/data/system/privacy";
 
     private static final String TABLE_SETTINGS = "settings";
+    
+    private static final String TABLE_MANAGER_APPS = "manager_apps";
     
     private static final String TABLE_MAP = "map";
     
@@ -104,6 +108,8 @@ public class PrivacyPersistenceAdapter {
         " switchWifiStateSetting INTEGER" +
         ");";
     
+    private static final String CREATE_TABLE_MANAGER_APPS =
+    	"CREATE TABLE IF NOT EXISTS " + TABLE_MANAGER_APPS + " ( packageName TEXT, signature TEXT, PRIMARY KEY (packageName, signature) )";
     
     private static final String CREATE_TABLE_MAP = 
         "CREATE TABLE IF NOT EXISTS " + TABLE_MAP + " ( name TEXT PRIMARY KEY, value TEXT );";
@@ -231,6 +237,26 @@ public class PrivacyPersistenceAdapter {
                 // most current version, do nothing
                 Log.w(TAG, "upgradeDatabase - trying to upgrade most current DB version");
                 break;
+                
+            case 5:
+                // need to add the management_apps table
+            	try {
+	                if (db != null && db.isOpen()) {
+	                    db.execSQL(CREATE_TABLE_MANAGER_APPS); 
+	                    db.setTransactionSuccessful();
+	                }
+                } catch (Exception e) {
+                    if (db != null && db.isOpen()) {
+                        db.endTransaction();
+                        db.close();
+                    }
+                    Log.w(TAG, "upgradeDatabase - could not upgrade DB; will restore backup", e);
+                    FileUtils.copyFile(dbBackupFile, dbFile);
+                    dbBackupFile.delete();
+                }
+                
+                break;
+
         }
         
         if (db != null && db.isOpen()) {
@@ -604,6 +630,178 @@ public class PrivacyPersistenceAdapter {
         }
 
         return result;
+    }
+    
+    
+    public synchronized boolean getIsAuthorizedManagerApp(String packageName, Set<String> signatures, boolean forceCloseDB) {
+    	Boolean isAuthorizedManagerApp = false;
+        if (packageName == null) {
+            Log.e(TAG, "getIsAuthorizedManagerApp - insufficient application identifier - package name is required");
+            return isAuthorizedManagerApp;
+        }
+        
+        // indicate that the DB is being read to prevent closing by other threads
+        readingThreads++;
+
+        SQLiteDatabase db;
+        try {
+            db = getReadableDatabase();
+        } catch (SQLiteException e) {
+            Log.e(TAG, "getIsAuthorizedManagerApp - database could not be opened", e);
+            readingThreads--;
+            return isAuthorizedManagerApp;
+        }
+
+        Cursor c = null;
+        
+        //While it would be better from an isolation perspective to have the comparisons outside the database part,
+        //by doing the comparisons here we can short circuit the checks as soon as we get a match
+        try {
+            c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
+
+            if (c != null) {
+            	if (c.getCount() == 0) {
+            		//if there are no entries for the app, then it doesn't have permission to update settings
+            		return false;
+            	} else if (c.moveToFirst()) {
+            		//we know the app is listed, so now we convert the signatures to something useful
+            		int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+            		do {
+            			//as soon as we get a match, we can exit (one signature match is enough)
+            			if (signatures.contains(c.getString(signatureColumn))) {
+            				isAuthorizedManagerApp = true;
+            				break;
+            			}
+            		} while (c.moveToNext());
+            	}
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "getIsAuthorizedManagerApp - Error occurred while reading database for signatures from : " + packageName, e);
+            e.printStackTrace();
+            if (c != null) c.close();
+        } finally {
+            if (c != null) c.close();
+            synchronized (readingThreads) {
+                readingThreads--;
+                // only close DB if no other threads are reading
+                if (readingThreads == 0 && db != null && db.isOpen()) {
+                    db.close();
+                }
+            }
+        }
+        return isAuthorizedManagerApp;
+    }
+
+    public synchronized void authorizeManagerApp(String packageName, Set<String> signatures, boolean forceCloseDB) {
+    	if (packageName == null) {
+    		Log.e(TAG, "authorizeManagerApp - insufficient application identifier - package name is required");
+    		return;
+    	}
+
+    	// indicate that the DB is being read to prevent closing by other threads
+    	readingThreads++;
+
+    	SQLiteDatabase db;
+    	try {
+    		db = getWritableDatabase();
+    	} catch (SQLiteException e) {
+    		Log.e(TAG, "authorizeManagerApp - database could not be opened", e);
+    		readingThreads--;
+    		return;
+    	}
+
+    	Cursor c = null;
+    	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
+
+    	try {
+    		c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
+
+    		if (c != null && c.getCount() != 0 && c.moveToFirst()) {
+    			int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+    			//there are one or more entries for this already - we need to remove ones with non-matching signatures before adding any new entries
+    			List<String> sigsToDelete = new LinkedList<String>();
+    			do {
+    				if (signatures.contains(c.getString(signatureColumn))) {
+    					signatures.remove(c.getString(signatureColumn));
+    				} else {
+    					sigsToDelete.add(c.getString(signatureColumn));
+    				}
+    			} while (c.moveToNext());
+
+    			//delete non-matching signature entries
+    			if (sigsToDelete.size() > 0) {
+	    			String [] whereArgs = new String [2];
+	    			whereArgs[0] = packageName;
+	    			for (String sigToDelete : sigsToDelete) {
+	    				whereArgs[1] = sigToDelete;
+	    				db.delete(TABLE_MANAGER_APPS, "packageName=? AND signature=?", whereArgs);
+	    			}
+    			}
+    		}
+    		
+    		ContentValues values = new ContentValues();
+    		values.put("packageName", packageName);
+    		for (String signature : signatures) {
+    			values.put("signature", signature);
+    			db.insert(TABLE_MANAGER_APPS, null, values);
+    		}
+    		
+    		db.setTransactionSuccessful();
+    		
+    	} catch (Exception e) {
+    		Log.e(TAG, "authorizeManagerApp - Error occurred while reading database for signatures from : " + packageName, e);
+    		e.printStackTrace();
+    		if (c != null) c.close();
+    	} finally {
+    		if (c != null) c.close();
+    		db.endTransaction();
+    		synchronized (readingThreads) {
+    			readingThreads--;
+    			// only close DB if no other threads are reading
+    			if (readingThreads == 0 && db != null && db.isOpen()) {
+    				db.close();
+    			}
+    		}
+    	}
+    }
+    
+    public synchronized void deauthorizeManagerApp(String packageName, boolean forceCloseDB) {
+    	if (packageName == null) {
+    		Log.e(TAG, "deauthorizeManagerApp - insufficient application identifier - package name is required");
+    		return;
+    	}
+
+    	// indicate that the DB is being read to prevent closing by other threads
+    	readingThreads++;
+
+    	SQLiteDatabase db;
+    	try {
+    		db = getWritableDatabase();
+    	} catch (SQLiteException e) {
+    		Log.e(TAG, "deauthorizeManagerApp - database could not be opened", e);
+    		readingThreads--;
+    		return;
+    	}
+
+    	db.beginTransaction(); // make sure this ends up in a consistent state (DB and plain text files)
+
+    	try {
+    		db.delete(TABLE_MANAGER_APPS, "packageName=?", new String [] {packageName});    		
+    		db.setTransactionSuccessful();
+    	} catch (Exception e) {
+    		Log.e(TAG, "deauthorizeManagerApp - Error occurred while deleting rights for : " + packageName, e);
+    		e.printStackTrace();
+    	} finally {
+    		db.endTransaction();
+    		synchronized (readingThreads) {
+    			readingThreads--;
+    			// only close DB if no other threads are reading
+    			if (readingThreads == 0 && db != null && db.isOpen()) {
+    				db.close();
+    			}
+    		}
+    	}
+    	return;
     }
     
     /**

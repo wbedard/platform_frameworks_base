@@ -2,10 +2,16 @@ package android.privacy;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Binder;
 import android.util.Log;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * PrivacySettingsManager's counterpart running in the system process, which
@@ -21,6 +27,8 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
     private static final String WRITE_PRIVACY_SETTINGS = "android.privacy.WRITE_PRIVACY_SETTINGS";
 
     private static final String READ_PRIVACY_SETTINGS = "android.privacy.READ_PRIVACY_SETTINGS";
+    
+    private static final String MANAGE_PRIVACY_APPLICATIONS = "android.privacy.MANAGE_PRIVACY_APPLICATIONS";
 
     private PrivacyPersistenceAdapter persistenceAdapter;
 
@@ -67,6 +75,9 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
+        			if (!getIsAuthorizedManagerApp(context.getPackageName())) {
+        				throw new SecurityException("Application must be authorised to save changes");
+        			}
 	//}
         Log.d(TAG, "saveSettings - " + settings);
         boolean result = persistenceAdapter.saveSettings(settings);
@@ -81,6 +92,9 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){//enforce permission, because declaring in manifest doesn't work well -> let my addon package delete settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
+					if (!getIsAuthorizedManagerApp(context.getPackageName())) {
+						throw new SecurityException("Application must be authorised to save changes");
+					}
 	//}
         boolean result = persistenceAdapter.deleteSettings(packageName);
         // update observer if directory exists
@@ -92,6 +106,73 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         }
         return result;
     }
+    
+    public boolean getIsAuthorizedManagerApp(String packageName) {
+    	PackageManager pkgMgr = context.getPackageManager();
+    	if (pkgMgr == null) {
+    		Log.d(TAG, "getCanUpdateSettings - Package manager could not be obtained");
+    		return false; 
+    	}
+    	
+    	PackageInfo pkgInfo;
+    	try {
+	    	//get the package info so we can get the signatures
+	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+    	} catch (NameNotFoundException e) {
+    		Log.d(TAG, "getCanUpdateSettings - Could not get package with name " + packageName);
+    		return false;
+    	}
+    	if (pkgInfo == null) {
+    		Log.d(TAG, "getCanUpdateSettings - Got null back when retrieving packageInfo for " + packageName);
+    		return false;
+    	}
+    	
+		Set<String> asciiSigs = new HashSet<String>();
+		for (Signature signature : pkgInfo.signatures) {
+			asciiSigs.add(signature.toCharsString());
+		}
+    	
+        return persistenceAdapter.getIsAuthorizedManagerApp(packageName, asciiSigs, false);
+  }
+
+    
+    public void authorizeManagerApp(String packageName) {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+    	PackageManager pkgMgr = context.getPackageManager();
+    	if (pkgMgr == null) {
+    		Log.d(TAG, "authorizeManagerApp - Package manager could not be obtained");
+    		return; 
+    	}
+    	
+    	PackageInfo pkgInfo;
+    	try {
+	    	//get the package info so we can get the signatures
+	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+    	} catch (NameNotFoundException e) {
+    		Log.d(TAG, "authorizeManagerApp - Could not get package with name " + packageName);
+    		return;
+    	}
+    	if (pkgInfo == null) {
+    		Log.d(TAG, "authorizeManagerApp - Got null back when retrieving packageInfo for " + packageName);
+    		return;
+    	}
+    	
+		Set<String> asciiSigs = new HashSet<String>();
+		for (Signature signature : pkgInfo.signatures) {
+			asciiSigs.add(signature.toCharsString());
+		}
+    	
+        persistenceAdapter.authorizeManagerApp(packageName, asciiSigs, false);
+  }
+    
+    public void deauthorizeManagerApp(String packageName) {
+    	if (Binder.getCallingUid() != 1000)
+    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+
+        persistenceAdapter.deauthorizeManagerApp(packageName, false);
+  }
     
     public double getVersion() {
         return VERSION;

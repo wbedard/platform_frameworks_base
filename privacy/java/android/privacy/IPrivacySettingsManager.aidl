@@ -15,4 +15,7 @@ interface IPrivacySettingsManager
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
+    boolean getIsAuthorizedManagerApp(String packageName);
+    void authorizeManagerApp(String packageName);
+    void deauthorizeManagerApp(String packageName);
 }

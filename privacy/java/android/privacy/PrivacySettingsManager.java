@@ -52,7 +52,7 @@ public class PrivacySettingsManager {
     public boolean saveSettings(PrivacySettings settings) {
         try {
 //            Log.d(TAG, "saveSettings - " + settings);
-            if (service != null) {            
+            if (service != null) {
                 return service.saveSettings(settings);
             } else {
                 Log.e(TAG, "saveSettings - PrivacySettingsManagerService is null");
@@ -196,5 +196,43 @@ public class PrivacySettingsManager {
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setBootCompleted: ", e);
         }
+    }
+    
+    public boolean getIsAuthorizedManagerApp(String packageName) {
+    	try {
+    		if (service != null) {
+    			return service.getIsAuthorizedManagerApp(packageName);
+    		} else {
+    			Log.e(TAG, "getIsAuthorizedManagerApp - PrivacySettingsManagerService is null");
+    			return false;
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    		return false;
+    	}
+    }
+    
+    public void authorizeManagerApp(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerApp(packageName);
+    		} else {
+    			Log.e(TAG, "authorizeManagerApp - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void deauthorizeManagerApp(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerApp(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerApp - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
     }
 }
