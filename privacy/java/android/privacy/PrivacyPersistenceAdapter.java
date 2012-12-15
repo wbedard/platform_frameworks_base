@@ -634,9 +634,10 @@ public class PrivacyPersistenceAdapter {
     }
     
     
-    public synchronized boolean getIsAuthorizedManagerApp(String packageName, Set<String> signatures, boolean forceCloseDB) {
+    public synchronized boolean getIsAuthorizedManagerApp(String [] packageNames, Set<String> signatures, boolean forceCloseDB) {
+    	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Starting with " + Integer.toString(signatures.size()) + " items");
     	Boolean isAuthorizedManagerApp = false;
-        if (packageName == null) {
+        if (packageNames == null || packageNames.length < 1) {
             Log.e(TAG, "getIsAuthorizedManagerApp - insufficient application identifier - package name is required");
             return isAuthorizedManagerApp;
         }
@@ -658,26 +659,37 @@ public class PrivacyPersistenceAdapter {
         //While it would be better from an isolation perspective to have the comparisons outside the database part,
         //by doing the comparisons here we can short circuit the checks as soon as we get a match
         try {
-            c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
-
-            if (c != null) {
-            	if (c.getCount() == 0) {
-            		//if there are no entries for the app, then it doesn't have permission to update settings
-            		return false;
-            	} else if (c.moveToFirst()) {
-            		//we know the app is listed, so now we convert the signatures to something useful
-            		int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
-            		do {
-            			//as soon as we get a match, we can exit (one signature match is enough)
-            			if (signatures.contains(c.getString(signatureColumn))) {
-            				isAuthorizedManagerApp = true;
-            				break;
-            			}
-            		} while (c.moveToNext());
-            	}
+        	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Running query");
+        	
+        	for (String packageName : packageNames) {
+	            c = query(db, TABLE_MANAGER_APPS, new String [] {"signature"}, "packageName=?", new String[] { packageName }, null, null, "signature", null);
+	
+	            if (c != null) {
+	            	Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - cursor not null");
+	            	if (c.getCount() == 0) {
+	            		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - cursor getCount = 0");
+	            		//if there are no entries for the app, then it doesn't have permission to update settings
+	            		return false;
+	            	} else if (c.moveToFirst()) {
+	            		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Result count " + Integer.toString(c.getCount()));
+	            		//we know the app is listed, so now we convert the signatures to something useful
+	            		int signatureColumn = c.getColumnIndex("signature"); //could probably use a constant for this, to (minimally) increase performance
+	            		do {
+	            			//as soon as we get a match, we can exit (one signature match is enough)
+	                		Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Check if signature present " + c.getString(signatureColumn));
+	
+	            			if (signatures.contains(c.getString(signatureColumn))) {
+	            				Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Signature matched: app is permitted");
+	            				isAuthorizedManagerApp = true;
+	            				break;
+	            			}
+	            			Log.d(TAG, "getIsAuthorizedManagerApp in PrivacyPersistenceAdapter - Moving to next row");
+	            		} while (c.moveToNext());
+	            	}
+	            }
             }
         } catch (Exception e) {
-            Log.e(TAG, "getIsAuthorizedManagerApp - Error occurred while reading database for signatures from : " + packageName, e);
+            Log.e(TAG, "getIsAuthorizedManagerApp - Error occurred while reading database for signatures", e);
             e.printStackTrace();
             if (c != null) c.close();
         } finally {

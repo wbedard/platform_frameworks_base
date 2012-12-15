@@ -75,7 +75,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-        			if (!getIsAuthorizedManagerApp(context.getPackageName())) {
+        			if (!getIsAuthorizedManagerApp(Binder.getCallingUid())) {
         				throw new SecurityException("Application must be authorised to save changes");
         			}
 	//}
@@ -92,7 +92,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){//enforce permission, because declaring in manifest doesn't work well -> let my addon package delete settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-					if (!getIsAuthorizedManagerApp(context.getPackageName())) {
+					if (!getIsAuthorizedManagerApp(Binder.getCallingUid())) {
 						throw new SecurityException("Application must be authorised to save changes");
 					}
 	//}
@@ -107,10 +107,52 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         return result;
     }
     
-    public boolean getIsAuthorizedManagerApp(String packageName) {
+    public boolean getIsAuthorizedManagerApp(int uid) {
+    	Log.d(TAG, "getIsAuthorizedManagerApp - Getting packages for UID " + Integer.toString(uid));
     	PackageManager pkgMgr = context.getPackageManager();
     	if (pkgMgr == null) {
-    		Log.d(TAG, "getCanUpdateSettings - Package manager could not be obtained");
+    		Log.d(TAG, "getIsAuthorizedManagerApp - Package manager could not be obtained");
+    		return false; 
+    	}
+    	
+    	String [] packageNames;
+    	PackageInfo pkgInfo;
+    	try {
+    		packageNames = pkgMgr.getPackagesForUid(uid);
+    	} catch (Exception e) {
+    		return false;
+    	}
+    	
+    	Set<String> asciiSigs = new HashSet<String>();
+    	
+    	//get the package info so we can get the signatures
+		for (String packageName : packageNames) {
+			try {
+				pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
+		    	Log.d(TAG, "getIsAuthorizedManagerApp - Retrieving asciiSigs for " + packageName);
+				for (Signature signature : pkgInfo.signatures) {
+					Log.d(TAG, "getIsAuthorizedManagerApp - Found signature " + signature.toCharsString());
+					asciiSigs.add(signature.toCharsString());
+				}
+	    	} catch (NameNotFoundException e) {
+	    		Log.d(TAG, "getIsAuthorizedManagerApp - Could not get package with name " + packageName);
+	    		return false;
+	    	}
+			
+	    	if (pkgInfo == null) {
+	    		Log.d(TAG, "getIsAuthorizedManagerApp - Got null back when retrieving packageInfo for " + packageName);
+	    		return false;
+	    	}
+		}
+    	
+        return persistenceAdapter.getIsAuthorizedManagerApp(packageNames, asciiSigs, false);
+  }
+    
+    public boolean getIsAuthorizedManagerApp(String packageName) {
+    	Log.d(TAG, "getIsAuthorizedManagerApp - Running for package " + packageName);
+    	PackageManager pkgMgr = context.getPackageManager();
+    	if (pkgMgr == null) {
+    		Log.d(TAG, "getIsAuthorizedManagerApp - Package manager could not be obtained");
     		return false; 
     	}
     	
@@ -119,20 +161,22 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	    	//get the package info so we can get the signatures
 	    	 pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
     	} catch (NameNotFoundException e) {
-    		Log.d(TAG, "getCanUpdateSettings - Could not get package with name " + packageName);
+    		Log.d(TAG, "getIsAuthorizedManagerApp - Could not get package with name " + packageName);
     		return false;
     	}
     	if (pkgInfo == null) {
-    		Log.d(TAG, "getCanUpdateSettings - Got null back when retrieving packageInfo for " + packageName);
+    		Log.d(TAG, "getIsAuthorizedManagerApp - Got null back when retrieving packageInfo for " + packageName);
     		return false;
     	}
     	
+    	Log.d(TAG, "getIsAuthorizedManagerApp - Retrieving asciiSigs for " + packageName);
 		Set<String> asciiSigs = new HashSet<String>();
 		for (Signature signature : pkgInfo.signatures) {
+			Log.d(TAG, "getIsAuthorizedManagerApp - Found signature " + signature.toCharsString());
 			asciiSigs.add(signature.toCharsString());
 		}
     	
-        return persistenceAdapter.getIsAuthorizedManagerApp(packageName, asciiSigs, false);
+        return persistenceAdapter.getIsAuthorizedManagerApp(new String[] {packageName}, asciiSigs, false);
   }
 
     
