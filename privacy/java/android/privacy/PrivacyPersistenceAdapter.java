@@ -1021,6 +1021,7 @@ public class PrivacyPersistenceAdapter {
             db.execSQL(CREATE_TABLE_SETTINGS);
             db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
             db.execSQL(CREATE_TABLE_MAP);
+            db.execSQL(CREATE_TABLE_MANAGER_APPS);
             db.execSQL(INSERT_VERSION);
             db.execSQL(INSERT_ENABLED);
             db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
