@@ -1,5 +1,6 @@
 package android.privacy;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -11,6 +12,7 @@ import android.util.Log;
 
 import java.io.File;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -75,7 +77,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-        			if (!getIsAuthorizedManagerApp(Binder.getCallingUid())) {
+        			if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
         				throw new SecurityException("Application must be authorised to save changes");
         			}
 	//}
@@ -92,7 +94,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){//enforce permission, because declaring in manifest doesn't work well -> let my addon package delete settings
         	if (Binder.getCallingUid() != 1000)
             		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-					if (!getIsAuthorizedManagerApp(Binder.getCallingUid())) {
+					if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
 						throw new SecurityException("Application must be authorised to save changes");
 					}
 	//}
@@ -107,45 +109,22 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         return result;
     }
     
-    public boolean getIsAuthorizedManagerApp(int uid) {
-    	Log.d(TAG, "getIsAuthorizedManagerApp - Getting packages for UID " + Integer.toString(uid));
-    	PackageManager pkgMgr = context.getPackageManager();
-    	if (pkgMgr == null) {
-    		Log.d(TAG, "getIsAuthorizedManagerApp - Package manager could not be obtained");
-    		return false; 
-    	}
-    	
-    	String [] packageNames;
-    	PackageInfo pkgInfo;
-    	try {
-    		packageNames = pkgMgr.getPackagesForUid(uid);
-    	} catch (Exception e) {
-    		return false;
-    	}
-    	
-    	Set<String> asciiSigs = new HashSet<String>();
-    	
-    	//get the package info so we can get the signatures
-		for (String packageName : packageNames) {
-			try {
-				pkgInfo = pkgMgr.getPackageInfo(packageName, PackageManager.GET_SIGNATURES);
-		    	Log.d(TAG, "getIsAuthorizedManagerApp - Retrieving asciiSigs for " + packageName);
-				for (Signature signature : pkgInfo.signatures) {
-					Log.d(TAG, "getIsAuthorizedManagerApp - Found signature " + signature.toCharsString());
-					asciiSigs.add(signature.toCharsString());
-				}
-	    	} catch (NameNotFoundException e) {
-	    		Log.d(TAG, "getIsAuthorizedManagerApp - Could not get package with name " + packageName);
-	    		return false;
-	    	}
-			
-	    	if (pkgInfo == null) {
-	    		Log.d(TAG, "getIsAuthorizedManagerApp - Got null back when retrieving packageInfo for " + packageName);
-	    		return false;
-	    	}
+    public boolean getIsAuthorizedManagerApp(int pid) {
+    	Log.d(TAG, "getIsAuthorizedManagerApp - Getting packages for PID " + Integer.toString(pid));
+
+        String packageName = null;
+        ActivityManager actMgr = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+		for(ActivityManager.RunningAppProcessInfo processInfo : actMgr.getRunningAppProcesses()){
+			if(processInfo.pid == pid){
+				packageName = processInfo.processName;
+			}
 		}
-    	
-        return persistenceAdapter.getIsAuthorizedManagerApp(packageNames, asciiSigs, false);
+		if (packageName == null) {
+			Log.d(TAG, "getIsAuthorizedManagerApp - Package name could not be obtained");
+			return false;
+		}
+
+        return getIsAuthorizedManagerApp(packageName);
   }
     
     public boolean getIsAuthorizedManagerApp(String packageName) {
