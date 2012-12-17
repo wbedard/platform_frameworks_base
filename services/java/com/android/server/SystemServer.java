@@ -72,6 +72,11 @@ import java.io.File;
 import java.util.Timer;
 import java.util.TimerTask;
 
+// BEGIN privacy-added
+import android.privacy.PrivacySettingsManagerService;
+//import android.privacy.surrogate.PrivacyTelephonyRegistry;
+// END privacy-added
+
 class ServerThread extends Thread {
     private static final String TAG = "SystemServer";
     private static final String ENCRYPTING_STATE = "trigger_restart_min_framework";
@@ -222,7 +227,7 @@ class ServerThread extends Thread {
             ServiceManager.addService(Context.DISPLAY_SERVICE, display, true);
 
             Slog.i(TAG, "Telephony Registry");
-            telephonyRegistry = new TelephonyRegistry(context);
+            telephonyRegistry = new PrivacyTelephonyRegistry(context);
             ServiceManager.addService("telephony.registry", telephonyRegistry);
 
             Slog.i(TAG, "Scheduling Policy");
@@ -277,6 +282,10 @@ class ServerThread extends Thread {
             Slog.i(TAG, "Content Manager");
             contentService = ContentService.main(context,
                     factoryTest == SystemServer.FACTORY_TEST_LOW_LEVEL);
+	    
+            // BEGIN privacy-added
+            addPrivacyService(context);
+            // END privacy-added
 
             Slog.i(TAG, "System Content Providers");
             ActivityManagerService.installSystemProviders();
@@ -1008,6 +1017,19 @@ class ServerThread extends Thread {
         Slog.d(TAG, "Starting service: " + intent);
         context.startServiceAsUser(intent, UserHandle.OWNER);
     }
+
+    // BEGIN privacy-added
+    private void addPrivacyService(Context context) {
+        try {
+            Log.i(TAG, "Privacy Service");
+            ServiceManager.addService("privacy", new PrivacySettingsManagerService(context));
+        } catch (Throwable e) {
+            Log.e(TAG, "Failure starting Privacy Service", e);
+        }        
+    }
+    // END privacy-added
+
+
 }
 
 public class SystemServer {
