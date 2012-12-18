@@ -165,8 +165,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      * @throws RemoteException
      */
     public void authorizeManagerAppKeys(String packageName) throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -184,8 +183,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 
 
     public void authorizeManagerAppKey(String packageName, String publicKey) throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -210,8 +208,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
     @Override
     public void authorizeManagerAppSignatures(String packageName)
     		throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -237,9 +234,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerApp(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerApp(packageName, false);
     }
 
@@ -251,9 +246,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerAppKeys(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerAppKeys(packageName, false);
     }
 
@@ -265,9 +258,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerAppSignatures(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerAppSignatures(packageName, false);
     }
     
@@ -288,13 +279,19 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         }
     }
     
-    public void registerObservers() {
-        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");        
+    public void registerObservers() throws RemoteException {
+        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
+		if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
+			throw new SecurityException("Application must be authorised to save changes");
+		}
         obs = new PrivacyFileObserver("/data/system/privacy", this);
     }
     
-    public void addObserver(String packageName) {
-        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");        
+    public void addObserver(String packageName) throws RemoteException {
+        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
+		if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
+			throw new SecurityException("Application must be authorised to save changes");
+		}
         obs.addObserver(packageName);
     }
     
