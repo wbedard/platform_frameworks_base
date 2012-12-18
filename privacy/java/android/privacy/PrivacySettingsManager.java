@@ -20,6 +20,7 @@ public class PrivacySettingsManager {
 	public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
 
 	public static final String EXTENSION_BATCH = "batch";
+	public static final String EXTENSION_PAC = "pac";
 
 	
 	private IPrivacySettingsManager service;
@@ -36,6 +37,8 @@ public class PrivacySettingsManager {
 	
 	public boolean supportsExtension(String extension) {
 		if (extension.equals(EXTENSION_BATCH)) {
+			return true;
+		} else if (extension.equals(EXTENSION_PAC)) {
 			return true;
 		} else {
 			return false;
