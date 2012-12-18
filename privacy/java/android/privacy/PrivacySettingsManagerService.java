@@ -311,8 +311,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      * @throws RemoteException
      */
     public void authorizeManagerAppKeys(String packageName) throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -330,8 +329,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 
 
     public void authorizeManagerAppKey(String packageName, String publicKey) throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -356,8 +354,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
     @Override
     public void authorizeManagerAppSignatures(String packageName)
     		throws RemoteException {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
 
     	Signature [] signatures = getSignatures(packageName);
     	if (signatures == null || signatures.length == 0) {
@@ -383,9 +380,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerApp(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerApp(packageName, false);
     }
 
@@ -397,9 +392,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerAppKeys(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerAppKeys(packageName, false);
     }
 
@@ -411,9 +404,7 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
      */
     @Override
     public void deauthorizeManagerAppSignatures(String packageName) {
-    	if (Binder.getCallingUid() != 1000)
-    		context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
-
+    	context.enforceCallingPermission(MANAGE_PRIVACY_APPLICATIONS, "Requires MANAGE_PRIVACY_APPLICATIONS");
     	persistenceAdapter.deauthorizeManagerAppSignatures(packageName, false);
     }
     
@@ -552,9 +543,6 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	 * Throw an exception if not. 
 	 */
 	private void checkCallerCanWriteOrThrow() throws RemoteException {
-		if (Binder.getCallingUid() == 1000) {
-			return;
-		}
 		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS,
 				"Requires WRITE_PRIVACY_SETTINGS");
         if (!getIsAuthorizedManagerApp(Binder.getCallingPid())) {
