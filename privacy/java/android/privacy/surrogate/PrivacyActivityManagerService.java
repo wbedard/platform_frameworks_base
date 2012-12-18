@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 import android.privacy.PrivacySettingsManagerService;
-import android.provider.Telephony;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.os.ServiceManager;
@@ -19,6 +18,10 @@ import android.privacy.IPrivacySettingsManager;
 public final class PrivacyActivityManagerService {
     
     private static final String TAG = "PrivacyActivityManagerService";
+    
+    private static final String SMS_RECEIVED_ACTION_INTENT = "android.provider.Telephony.SMS_RECEIVED";
+    private static final String WAP_PUSH_RECEIVED_INTENT = "android.provider.Telephony.WAP_PUSH_RECEIVED";
+    private static final String DATA_SMS_RECEIVED_INTENT = "android.intent.action.DATA_SMS_RECEIVED";
     
     private static PrivacySettingsManager pSetMan;
     
@@ -128,7 +131,7 @@ public final class PrivacyActivityManagerService {
             
 //            Log.d(TAG, "broadcasting intent " + action + " - " + packageName + " (" + uid + ") output: " + output);
         // incoming SMS
-        } else if (action.equals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION)) {
+        } else if (action.equals(SMS_RECEIVED_ACTION_INTENT)) {
             pSet = pSetMan.getSettings(packageName, uid);
             output = "[real]";
 //            Log.d(TAG, "package: " + packageName + " uid: " + uid);
@@ -182,8 +185,8 @@ public final class PrivacyActivityManagerService {
             
 //            Log.d(TAG, "broadcasting intent " + action + " - " + packageName + " (" + uid + ") output: " + output);
         // incoming MMS
-        } else if (action.equals(Telephony.Sms.Intents.WAP_PUSH_RECEIVED_ACTION) ||
-                action.equals(Telephony.Sms.Intents.DATA_SMS_RECEIVED_ACTION)) {
+        } else if (action.equals(WAP_PUSH_RECEIVED_INTENT) ||
+                action.equals(DATA_SMS_RECEIVED_INTENT)) {
             pSet = pSetMan.getSettings(packageName, uid);
             output = "[real]";
             
