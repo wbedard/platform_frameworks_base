@@ -12535,6 +12535,7 @@ package android.mtp {
 package android.net {
 
   public class ConnectivityManager {
+    ctor public ConnectivityManager(android.net.IConnectivityManager);
     method public android.net.NetworkInfo getActiveNetworkInfo();
     method public android.net.NetworkInfo[] getAllNetworkInfo();
     method public deprecated boolean getBackgroundDataSetting();
@@ -12586,6 +12587,116 @@ package android.net {
     field public int leaseDuration;
     field public int netmask;
     field public int serverAddress;
+  }
+
+  public abstract interface IConnectivityManager implements android.os.IInterface {
+    method public abstract void captivePortalCheckComplete(android.net.NetworkInfo) throws android.os.RemoteException;
+    method public abstract android.os.ParcelFileDescriptor establishVpn(com.android.internal.net.VpnConfig) throws android.os.RemoteException;
+    method public abstract android.net.LinkProperties getActiveLinkProperties() throws android.os.RemoteException;
+    method public abstract android.net.NetworkInfo getActiveNetworkInfo() throws android.os.RemoteException;
+    method public abstract android.net.NetworkInfo getActiveNetworkInfoForUid(int) throws android.os.RemoteException;
+    method public abstract android.net.NetworkQuotaInfo getActiveNetworkQuotaInfo() throws android.os.RemoteException;
+    method public abstract android.net.NetworkInfo[] getAllNetworkInfo() throws android.os.RemoteException;
+    method public abstract android.net.NetworkState[] getAllNetworkState() throws android.os.RemoteException;
+    method public abstract android.net.ProxyProperties getGlobalProxy() throws android.os.RemoteException;
+    method public abstract int getLastTetherError(java.lang.String) throws android.os.RemoteException;
+    method public abstract com.android.internal.net.LegacyVpnInfo getLegacyVpnInfo() throws android.os.RemoteException;
+    method public abstract android.net.LinkProperties getLinkProperties(int) throws android.os.RemoteException;
+    method public abstract boolean getMobileDataEnabled() throws android.os.RemoteException;
+    method public abstract android.net.NetworkInfo getNetworkInfo(int) throws android.os.RemoteException;
+    method public abstract int getNetworkPreference() throws android.os.RemoteException;
+    method public abstract android.net.ProxyProperties getProxy() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetherableBluetoothRegexs() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetherableIfaces() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetherableUsbRegexs() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetherableWifiRegexs() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetheredIfacePairs() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetheredIfaces() throws android.os.RemoteException;
+    method public abstract java.lang.String[] getTetheringErroredIfaces() throws android.os.RemoteException;
+    method public abstract boolean isActiveNetworkMetered() throws android.os.RemoteException;
+    method public abstract boolean isNetworkSupported(int) throws android.os.RemoteException;
+    method public abstract boolean isTetheringSupported() throws android.os.RemoteException;
+    method public abstract boolean prepareVpn(java.lang.String, java.lang.String) throws android.os.RemoteException;
+    method public abstract boolean protectVpn(android.os.ParcelFileDescriptor) throws android.os.RemoteException;
+    method public abstract void reportInetCondition(int, int) throws android.os.RemoteException;
+    method public abstract void requestNetworkTransitionWakelock(java.lang.String) throws android.os.RemoteException;
+    method public abstract boolean requestRouteToHost(int, int) throws android.os.RemoteException;
+    method public abstract boolean requestRouteToHostAddress(int, byte[]) throws android.os.RemoteException;
+    method public abstract void setDataDependency(int, boolean) throws android.os.RemoteException;
+    method public abstract void setGlobalProxy(android.net.ProxyProperties) throws android.os.RemoteException;
+    method public abstract void setMobileDataEnabled(boolean) throws android.os.RemoteException;
+    method public abstract void setNetworkPreference(int) throws android.os.RemoteException;
+    method public abstract void setPolicyDataEnable(int, boolean) throws android.os.RemoteException;
+    method public abstract boolean setRadio(int, boolean) throws android.os.RemoteException;
+    method public abstract boolean setRadios(boolean) throws android.os.RemoteException;
+    method public abstract int setUsbTethering(boolean) throws android.os.RemoteException;
+    method public abstract void startLegacyVpn(com.android.internal.net.VpnProfile) throws android.os.RemoteException;
+    method public abstract int startUsingNetworkFeature(int, java.lang.String, android.os.IBinder) throws android.os.RemoteException;
+    method public abstract int stopUsingNetworkFeature(int, java.lang.String) throws android.os.RemoteException;
+    method public abstract int tether(java.lang.String) throws android.os.RemoteException;
+    method public abstract int untether(java.lang.String) throws android.os.RemoteException;
+    method public abstract boolean updateLockdownVpn() throws android.os.RemoteException;
+  }
+
+  public class LinkAddress implements android.os.Parcelable {
+    ctor public LinkAddress(java.net.InetAddress, int);
+    ctor public LinkAddress(java.net.InterfaceAddress);
+    method public int describeContents();
+    method public java.net.InetAddress getAddress();
+    method public int getNetworkPrefixLength();
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public class LinkCapabilities implements android.os.Parcelable {
+    ctor public LinkCapabilities();
+    ctor public LinkCapabilities(android.net.LinkCapabilities);
+    method public void clear();
+    method public boolean containsKey(int);
+    method public boolean containsValue(java.lang.String);
+    method public static android.net.LinkCapabilities createNeedsMap(java.lang.String);
+    method public int describeContents();
+    method public java.util.Set<java.util.Map.Entry<java.lang.Integer, java.lang.String>> entrySet();
+    method public java.lang.String get(int);
+    method public boolean isEmpty();
+    method public java.util.Set<java.lang.Integer> keySet();
+    method protected static void log(java.lang.String);
+    method public void put(int, java.lang.String);
+    method public int size();
+    method public java.util.Collection<java.lang.String> values();
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public class LinkProperties implements android.os.Parcelable {
+    ctor public LinkProperties();
+    ctor public LinkProperties(android.net.LinkProperties);
+    method public void addDns(java.net.InetAddress);
+    method public void addLinkAddress(android.net.LinkAddress);
+    method public void addRoute(android.net.RouteInfo);
+    method public void clear();
+    method public android.net.LinkProperties.CompareResult<android.net.LinkAddress> compareAddresses(android.net.LinkProperties);
+    method public android.net.LinkProperties.CompareResult<java.net.InetAddress> compareDnses(android.net.LinkProperties);
+    method public android.net.LinkProperties.CompareResult<android.net.RouteInfo> compareRoutes(android.net.LinkProperties);
+    method public int describeContents();
+    method public java.util.Collection<java.net.InetAddress> getAddresses();
+    method public java.util.Collection<java.net.InetAddress> getDnses();
+    method public android.net.ProxyProperties getHttpProxy();
+    method public java.lang.String getInterfaceName();
+    method public java.util.Collection<android.net.LinkAddress> getLinkAddresses();
+    method public java.util.Collection<android.net.RouteInfo> getRoutes();
+    method public boolean isIdenticalAddresses(android.net.LinkProperties);
+    method public boolean isIdenticalDnses(android.net.LinkProperties);
+    method public boolean isIdenticalHttpProxy(android.net.LinkProperties);
+    method public boolean isIdenticalInterfaceName(android.net.LinkProperties);
+    method public boolean isIdenticalRoutes(android.net.LinkProperties);
+    method public void setHttpProxy(android.net.ProxyProperties);
+    method public void setInterfaceName(java.lang.String);
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public static class LinkProperties.CompareResult {
+    ctor public LinkProperties.CompareResult();
+    field public java.util.Collection added;
+    field public java.util.Collection removed;
   }
 
   public class LocalServerSocket {
@@ -12699,6 +12810,30 @@ package android.net {
     enum_constant public static final android.net.NetworkInfo.State UNKNOWN;
   }
 
+  public class NetworkQuotaInfo implements android.os.Parcelable {
+    method public int describeContents();
+    method public long getEstimatedBytes();
+    method public long getHardLimitBytes();
+    method public long getSoftLimitBytes();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public static final long NO_LIMIT = -1L; // 0xffffffffffffffffL
+  }
+
+  public class NetworkState implements android.os.Parcelable {
+    ctor public NetworkState(android.net.NetworkInfo, android.net.LinkProperties, android.net.LinkCapabilities);
+    ctor public NetworkState(android.net.NetworkInfo, android.net.LinkProperties, android.net.LinkCapabilities, java.lang.String, java.lang.String);
+    ctor public NetworkState(android.os.Parcel);
+    method public int describeContents();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public final android.net.LinkCapabilities linkCapabilities;
+    field public final android.net.LinkProperties linkProperties;
+    field public final java.lang.String networkId;
+    field public final android.net.NetworkInfo networkInfo;
+    field public final java.lang.String subscriberId;
+  }
+
   public class ParseException extends java.lang.RuntimeException {
     field public java.lang.String response;
   }
@@ -12710,6 +12845,33 @@ package android.net {
     method public static final deprecated java.lang.String getHost(android.content.Context);
     method public static final deprecated int getPort(android.content.Context);
     field public static final java.lang.String PROXY_CHANGE_ACTION = "android.intent.action.PROXY_CHANGE";
+  }
+
+  public class ProxyProperties implements android.os.Parcelable {
+    ctor public ProxyProperties(java.lang.String, int, java.lang.String);
+    ctor public ProxyProperties(android.net.ProxyProperties);
+    method public int describeContents();
+    method public java.lang.String getExclusionList();
+    method public java.lang.String getHost();
+    method public int getPort();
+    method public java.net.InetSocketAddress getSocketAddress();
+    method public boolean isExcluded(java.lang.String);
+    method public java.net.Proxy makeProxy();
+    method public void writeToParcel(android.os.Parcel, int);
+  }
+
+  public class RouteInfo implements android.os.Parcelable {
+    ctor public RouteInfo(android.net.LinkAddress, java.net.InetAddress);
+    ctor public RouteInfo(java.net.InetAddress);
+    method public int describeContents();
+    method public android.net.LinkAddress getDestination();
+    method public java.net.InetAddress getGateway();
+    method public boolean isDefaultRoute();
+    method public boolean isHostRoute();
+    method public static android.net.RouteInfo makeHostRoute(java.net.InetAddress);
+    method public static android.net.RouteInfo makeHostRoute(java.net.InetAddress, java.net.InetAddress);
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
   }
 
   public class SSLCertificateSocketFactory extends javax.net.ssl.SSLSocketFactory {
@@ -20687,6 +20849,7 @@ package android.telephony {
   public final class CellInfoGsm extends android.telephony.CellInfo implements android.os.Parcelable {
     method public android.telephony.CellIdentityGsm getCellIdentity();
     method public android.telephony.CellSignalStrengthGsm getCellSignalStrength();
+    method public void setCellIdentity(android.telephony.CellIdentityGsm);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final android.os.Parcelable.Creator CREATOR;
   }
@@ -29878,6 +30041,85 @@ package android.widget {
     method public void setOnZoomOutClickListener(android.view.View.OnClickListener);
     method public void setZoomSpeed(long);
     method public void show();
+  }
+
+}
+
+package com.android.internal.net {
+
+  public class LegacyVpnInfo implements android.os.Parcelable {
+    ctor public LegacyVpnInfo();
+    method public int describeContents();
+    method public static int stateFromNetworkInfo(android.net.NetworkInfo);
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public static final int STATE_CONNECTED = 3; // 0x3
+    field public static final int STATE_CONNECTING = 2; // 0x2
+    field public static final int STATE_DISCONNECTED = 0; // 0x0
+    field public static final int STATE_FAILED = 5; // 0x5
+    field public static final int STATE_INITIALIZING = 1; // 0x1
+    field public static final int STATE_TIMEOUT = 4; // 0x4
+    field public android.app.PendingIntent intent;
+    field public java.lang.String key;
+    field public int state;
+  }
+
+  public class VpnConfig implements android.os.Parcelable {
+    ctor public VpnConfig();
+    method public int describeContents();
+    method public static android.content.Intent getIntentForConfirmation();
+    method public static android.app.PendingIntent getIntentForStatusPanel(android.content.Context, com.android.internal.net.VpnConfig);
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public static final java.lang.String DIALOGS_PACKAGE = "com.android.vpndialogs";
+    field public static final java.lang.String LEGACY_VPN = "[Legacy VPN]";
+    field public static final java.lang.String SERVICE_INTERFACE = "android.net.VpnService";
+    field public java.lang.String addresses;
+    field public android.app.PendingIntent configureIntent;
+    field public java.util.List dnsServers;
+    field public java.lang.String interfaze;
+    field public boolean legacy;
+    field public int mtu;
+    field public java.lang.String routes;
+    field public java.util.List searchDomains;
+    field public java.lang.String session;
+    field public long startTime;
+    field public java.lang.String user;
+  }
+
+  public class VpnProfile implements java.lang.Cloneable android.os.Parcelable {
+    ctor public VpnProfile(java.lang.String);
+    ctor public VpnProfile(android.os.Parcel);
+    method public static com.android.internal.net.VpnProfile decode(java.lang.String, byte[]);
+    method public int describeContents();
+    method public byte[] encode();
+    method public boolean isValidLockdownProfile();
+    method public void writeToParcel(android.os.Parcel, int);
+    field public static final android.os.Parcelable.Creator CREATOR;
+    field public static final int TYPE_IPSEC_HYBRID_RSA = 5; // 0x5
+    field public static final int TYPE_IPSEC_XAUTH_PSK = 3; // 0x3
+    field public static final int TYPE_IPSEC_XAUTH_RSA = 4; // 0x4
+    field public static final int TYPE_L2TP_IPSEC_PSK = 1; // 0x1
+    field public static final int TYPE_L2TP_IPSEC_RSA = 2; // 0x2
+    field public static final int TYPE_MAX = 5; // 0x5
+    field public static final int TYPE_PPTP = 0; // 0x0
+    field public java.lang.String dnsServers;
+    field public java.lang.String ipsecCaCert;
+    field public java.lang.String ipsecIdentifier;
+    field public java.lang.String ipsecSecret;
+    field public java.lang.String ipsecServerCert;
+    field public java.lang.String ipsecUserCert;
+    field public final java.lang.String key;
+    field public java.lang.String l2tpSecret;
+    field public boolean mppe;
+    field public java.lang.String name;
+    field public java.lang.String password;
+    field public java.lang.String routes;
+    field public boolean saveLogin;
+    field public java.lang.String searchDomains;
+    field public java.lang.String server;
+    field public int type;
+    field public java.lang.String username;
   }
 
 }

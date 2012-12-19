@@ -14,13 +14,17 @@ import android.privacy.IPrivacySettingsManager;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 import android.telephony.CellInfo;
-import android.telephony.GsmCellIdentity;
+import android.telephony.CellInfoGsm;
+import android.telephony.CellIdentityGsm;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 import android.util.Log;
 import android.os.Process;
 
@@ -312,7 +316,7 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
     }
 	
 	@Override
-	public void notifyCellInfo(CellInfo cellInfo) {
+	public void notifyCellInfo(List<CellInfo> cellInfo) {
         if (!checkNotifyPermission("notifyCellInfo()")) {
             return;
         }
@@ -323,11 +327,15 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
                     try {
                     	if(!isPackageAllowed(PERMISSION_CELL_INFO,r.pkgForDebug)){
                     		//for testings only at first
-                    		r.callback.onCellInfoChanged(new CellInfo(CellInfo.CELL_INFO_TIMESTAMP_TYPE_UNKNOWN,System.currentTimeMillis(),System.currentTimeMillis(),true,new SignalStrength(),new GsmCellIdentity(11,11,549,545,2,"unknown")));
+                            CellInfoGsm fakeCellInfo = new CellInfoGsm(); 
+                            CellIdentityGsm fakeCellIdentity = new CellIdentityGsm(11,11,549,525,2);
+                            fakeCellInfo.setCellIdentity(fakeCellIdentity);
+                    		//r.callback.onCellInfoChanged(new CellInfoGsm(CellInfo.TIMESTAMP_TYPE_UNKNOWN,System.currentTimeMillis(),System.currentTimeMillis(),true,new SignalStrength(),new CellIdentityGsm(11,11,549,545,2,"unknown")));
+                    		r.callback.onCellInfoChanged(new ArrayList<CellInfo>(Arrays.asList(fakeCellInfo)));
                     		Log.i(P_TAG,"package: " + r.pkgForDebug + " blocked for Cellinfo");
                     	}
                     	else{
-                    		r.callback.onCellInfoChanged(new CellInfo(cellInfo));
+                    		r.callback.onCellInfoChanged(cellInfo);
                     		Log.i(P_TAG,"package: " + r.pkgForDebug + " allowed for Cellinfo");
                     	}
                     } catch (RemoteException ex) {
