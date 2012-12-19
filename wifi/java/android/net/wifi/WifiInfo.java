@@ -85,7 +85,7 @@ public class WifiInfo implements Parcelable {
      * @hide
      */
     public WifiInfo(boolean fake){
-	mSSID = "";
+    	mWifiSsid = WifiSsid.createFromAsciiEncoded("");
         mBSSID = "";
         mNetworkId = -1;
         mSupplicantState = SupplicantState.UNINITIALIZED;

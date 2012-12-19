@@ -25,6 +25,10 @@ import android.util.Log;
 public final class PrivacyContentResolver {
     
     private static final String TAG = "PrivacyContentResolver";
+
+    private static final String SMS_CONTENT_URI_AUTHORITY = "sms";
+    private static final String MMS_CONTENT_URI_AUTHORITY = "mms";
+    private static final String MMS_SMS_CONTENT_URI_AUTHORITY = "mms-sms";
     
     private static PrivacySettingsManager pSetMan;
     
@@ -101,7 +105,7 @@ public final class PrivacyContentResolver {
                         pSetMan.notification(packageName, uid, PrivacySettings.REAL, PrivacySettings.DATA_CALENDAR, null, pSet);
                     }
                     
-                } else if (auth.equals(Mms.CONTENT_URI.getAuthority())) {
+                } else if (auth.equals(MMS_CONTENT_URI_AUTHORITY)) {
                     
                     if (pSet != null && pSet.getMmsSetting() == PrivacySettings.EMPTY) {
                         output_label = "[empty]";
@@ -111,7 +115,7 @@ public final class PrivacyContentResolver {
                         pSetMan.notification(packageName, uid, PrivacySettings.REAL, PrivacySettings.DATA_MMS, null, pSet);
                     }
                     
-                } else if (auth.equals(Sms.CONTENT_URI.getAuthority())) {
+                } else if (auth.equals(SMS_CONTENT_URI_AUTHORITY)) {
                     
                     if (pSet != null && pSet.getSmsSetting() == PrivacySettings.EMPTY) {
                         output_label = "[empty]";
@@ -121,7 +125,7 @@ public final class PrivacyContentResolver {
                         pSetMan.notification(packageName, uid, PrivacySettings.REAL, PrivacySettings.DATA_SMS, null, pSet);
                     }
                 // all messages, sms and mms
-                } else if (auth.equals(MmsSms.CONTENT_URI.getAuthority()) || 
+                } else if (auth.equals(MMS_SMS_CONTENT_URI_AUTHORITY) || 
                         auth.equals("mms-sms-v2") /* htc specific, accessed by system messages application */) { 
                     
                     // deny access if access to either sms, mms or both is restricted by privacy settings
