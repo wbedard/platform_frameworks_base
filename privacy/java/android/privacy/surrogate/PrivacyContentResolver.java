@@ -12,9 +12,6 @@ import android.provider.Browser;
 import android.provider.CalendarContract;
 import android.provider.CallLog;
 import android.provider.ContactsContract;
-import android.provider.Telephony.Mms;
-import android.provider.Telephony.MmsSms;
-import android.provider.Telephony.Sms;
 import android.util.Log;
 
 /**
