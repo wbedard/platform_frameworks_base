@@ -201,6 +201,7 @@ public class Camera {
 
     // need to keep a connection to the privacy settings manager to send notifications
     private PrivacySettingsManager pSetMan;
+    private PrivacySettings pSet;
     
     private String guessedPackageName = null;
     private int privacyMode = PRIVACY_MODE_UNKNOWN;
@@ -302,7 +303,6 @@ public class Camera {
     			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Could not access privacy service");
     			return PRIVACY_MODE_ERROR;
     		}
-    		PrivacySettings pSet = null;
     		String[] packageNames = getPackageName();
 
     		if(packageNames == null){
@@ -321,7 +321,6 @@ public class Camera {
     				}
     				return PRIVACY_MODE_DENIED;
     			}
-    			pSet = null;
     		}
     		return PRIVACY_MODE_ALLOWED;
     	}
@@ -934,10 +933,10 @@ public class Camera {
         	switch (privacyMode) {
         	case PRIVACY_MODE_DENIED:
         		access = false;
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(guessedPackageName));
+        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSet);
         		break;
         	case PRIVACY_MODE_ALLOWED:
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(guessedPackageName));
+        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSet);
         		break;
         	case PRIVACY_MODE_ERROR:
         		access = false;
