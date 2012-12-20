@@ -18,6 +18,8 @@ public class PrivacySettingsManager {
 
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
     
+    public static final String EXTENSION_PAC = "pac";
+    
     private IPrivacySettingsManager service;
     
     /**
@@ -30,6 +32,14 @@ public class PrivacySettingsManager {
         this.service = service;
     }
 
+	public boolean supportsExtension(String extension) {
+		if (extension.equals(EXTENSION_PAC)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
     public PrivacySettings getSettings(String packageName, int uid) {
         return getSettings(packageName);
     }
@@ -52,7 +62,7 @@ public class PrivacySettingsManager {
     public boolean saveSettings(PrivacySettings settings) {
         try {
 //            Log.d(TAG, "saveSettings - " + settings);
-            if (service != null) {            
+            if (service != null) {
                 return service.saveSettings(settings);
             } else {
                 Log.e(TAG, "saveSettings - PrivacySettingsManagerService is null");
@@ -196,5 +206,92 @@ public class PrivacySettingsManager {
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setBootCompleted: ", e);
         }
+    }
+    
+    public boolean getIsAuthorizedManagerApp(String packageName) {
+    	try {
+    		if (service != null) {
+    			return service.getIsAuthorizedManagerApp(packageName);
+    		} else {
+    			Log.e(TAG, "getIsAuthorizedManagerApp - PrivacySettingsManagerService is null");
+    			return false;
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    		return false;
+    	}
+    }
+    
+    public void authorizeManagerAppSignatures(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerAppSignatures(packageName);
+    		} else {
+    			Log.e(TAG, "authorizeManagerAppSignatures - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void authorizeManagerAppKeys(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerAppKeys(packageName);
+    		} else {
+    			Log.e(TAG, "authorizeManagerAppKeys - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void authorizeManagerAppKey(String packageName, String publicKey) {
+    	try {
+    		if (service != null) {
+    			service.authorizeManagerAppKey(packageName, publicKey);
+    		} else {
+    			Log.e(TAG, "authorizeManagerAppKey - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    
+    public void deauthorizeManagerApp(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerApp(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerApp - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void deauthorizeManagerAppSignatures(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerAppSignatures(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerAppSignature - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
+    public void deauthorizeManagerAppKeys(String packageName) {
+    	try {
+    		if (service != null) {
+    			service.deauthorizeManagerAppKeys(packageName);
+    		} else {
+    			Log.e(TAG, "deauthorizeManagerAppKeys - PrivacySettingsManagerService is null");
+    		}
+    	} catch (RemoteException e) {
+    		e.printStackTrace();
+    	}
     }
 }

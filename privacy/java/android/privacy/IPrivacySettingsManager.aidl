@@ -15,4 +15,11 @@ interface IPrivacySettingsManager
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
+    boolean getIsAuthorizedManagerApp(String packageName);
+    void authorizeManagerAppKeys(String packageName);
+	void authorizeManagerAppKey(String packageName, String publicKey);
+	void authorizeManagerAppSignatures(String packageName);
+    void deauthorizeManagerApp(String packageName);
+    void deauthorizeManagerAppKeys(String packageName);
+    void deauthorizeManagerAppSignatures(String packageName);
 }
