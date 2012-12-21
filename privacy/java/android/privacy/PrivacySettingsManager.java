@@ -30,6 +30,7 @@ public class PrivacySettingsManager {
         this.service = service;
     }
 
+    @Deprecated
     public PrivacySettings getSettings(String packageName, int uid) {
         return getSettings(packageName);
     }
@@ -81,22 +82,22 @@ public class PrivacySettingsManager {
     }
     
     public boolean deleteSettings(String packageName) {
-        return deleteSettings(packageName, -1);
+        try {
+          if (service != null) {
+              return service.deleteSettings(packageName);
+          } else {
+              Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+              return false;
+          }
+      } catch (RemoteException e) {
+          Log.e(TAG, "RemoteException in deleteSettings: ", e);
+          return false;
+      }
     }
     
+    @Deprecated
     public boolean deleteSettings(String packageName, int uid) {
-        try {
-//            Log.d(TAG, "deleteSettings - "  + packageName + " UID: " + uid);
-            if (service != null) {
-                return service.deleteSettings(packageName);
-            } else {
-                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
-                return false;
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in deleteSettings: ", e);
-            return false;
-        }
+    	return deleteSettings(packageName);
     }
     
     /**
@@ -117,6 +118,12 @@ public class PrivacySettingsManager {
     public void notification(String packageName, byte accessMode, String dataType, String output, IPrivacySettingsBase pSet) {
     	notification(packageName, accessMode, dataType, output);
     }
+
+    @Deprecated
+    public void notification(String packageName, int uid, byte accessMode, String dataType, String output) {
+        notification(packageName, accessMode, dataType, output);
+    }
+
     
     public void notification(String packageName, byte accessMode, String dataType, String output) {
         try {

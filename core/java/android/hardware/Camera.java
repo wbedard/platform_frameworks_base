@@ -202,10 +202,9 @@ public class Camera {
 
     // need to keep a connection to the privacy settings manager to send notifications
     private final PrivacySettingsManager pSetMan;
-    private final ImmutablePrivacySettings pSet;
     
     private final String guessedPackageName;
-    private final int privacyMode = PRIVACY_MODE_UNKNOWN;
+    private final int privacyMode;
     
     //END PRIVACY
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -287,49 +286,6 @@ public class Camera {
     	}
     }
 
-    /**
-     * {@hide}
-     * Checks if the current package is permitted access to the camera. Because we don't have
-     * the app context, we infer the package name PID, and failing that from UID.
-     * One UID can be tied to multiple packages: if we have to fall back to the UID,
-     * and >1 package has that UID, then camera access is only permitted if *all*
-     * packages with that UID have camera access
-     * @return IS_ALLOWED (-1) if all packages allowed, IS_NOT_ALLOWED(-2) if one of these packages not allowed, GOT_ERROR (-3) if something went wrong
-     */
-    private int checkIfPackagesAllowed(){
-    	try{
-    		this.pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
-
-    		if(this.pSetMan == null){
-    			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Could not access privacy service");
-    			return PRIVACY_MODE_ERROR;
-    		}
-    		String[] packageNames = getPackageName();
-
-    		if(packageNames == null){
-    			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Failed to identify package using camera");
-    			return PRIVACY_MODE_ERROR;
-    		}
-
-    		for(String packageName : packageNames){
-				this.guessedPackageName = packageName;
-				
-    			this.pSet = (ImmutablePrivacySettings)this.pSetMan.getSettings(packageName, true);
-    			//No settings is interpreted as 'allow'
-    			if(this.pSet != null && (this.pSet.getCameraSetting() != PrivacySettings.REAL)){
-    				if (packageNames.length > 1) {
-    					Log.d(PRIVACY_TAG,"Camera:checkIfPackagesAllowed:Access denied: 1+ of the (multiple) packages with UID " + Integer.toString(Process.myUid()) + " (package " + packageName + ") is not permitted camera access");
-    				}
-    				return PRIVACY_MODE_DENIED;
-    			}
-    		}
-    		return PRIVACY_MODE_ALLOWED;
-    	}
-    	catch (Exception e){
-    		Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Exception occurred", e);
-    		return PRIVACY_MODE_ERROR;
-    	}
-    }
 
     //END PRIVACY
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -494,7 +450,7 @@ public class Camera {
     }
 
     Camera(int cameraId) {
-        this.privacyMode = checkIfPackagesAllowed();
+        this();
 
         mShutterCallback = null;
         mRawImageCallback = null;
@@ -520,8 +476,46 @@ public class Camera {
      * An empty Camera for testing purpose.
      */
     Camera() {
-    	privacyMode = checkIfPackagesAllowed();
-    }
+    	pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+    	int privacyMode = PRIVACY_MODE_UNKNOWN;
+    	String guessedPackageName = UNKNOWN_PACKAGE_NAME;
+    	try{
+    		if(this.pSetMan == null) {
+    			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Could not access privacy service");
+    			privacyMode = PRIVACY_MODE_ERROR;
+    		} else {
+    			String[] packageNames = getPackageName();
+
+    			if(packageNames == null){
+    				Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Failed to identify package using camera");
+    				privacyMode = PRIVACY_MODE_ERROR;
+    			} else {
+
+    				for(String packageName : packageNames){
+    					guessedPackageName = packageName;
+
+    					ImmutablePrivacySettings pSet = this.pSetMan.getImmutableSettings(packageName);
+    					//No settings is interpreted as 'allow'
+    					if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){
+    						if (packageNames.length > 1) {
+    							Log.d(PRIVACY_TAG,"Camera:checkIfPackagesAllowed:Access denied: 1+ of the (multiple) packages with UID " + Integer.toString(Process.myUid()) + " (package " + packageName + ") is not permitted camera access");
+    						}
+    						privacyMode = PRIVACY_MODE_DENIED;
+    						break;
+    					}
+    				}
+    				if (privacyMode == PRIVACY_MODE_UNKNOWN) {
+    					privacyMode = PRIVACY_MODE_ALLOWED;
+    				}
+    			}
+    		}
+		} catch (Exception e) {
+			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Exception occurred", e);
+			privacyMode = PRIVACY_MODE_ERROR;
+		}
+		this.privacyMode = privacyMode;
+		this.guessedPackageName = guessedPackageName;
+	}
 
     protected void finalize() {
         release();
@@ -935,18 +929,18 @@ public class Camera {
         	case PRIVACY_MODE_UNKNOWN:
         		access = false;
         		Log.e(PRIVACY_TAG,"Camera:handleMessage: Mode was UNKNOWN when it should have been detected already");
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSet);
+        		pSetMan.notification(guessedPackageName, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
         		break;
         	case PRIVACY_MODE_DENIED:
         		access = false;
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSet);
+        		pSetMan.notification(guessedPackageName, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
         		break;
         	case PRIVACY_MODE_ALLOWED:
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSet);
+        		pSetMan.notification(guessedPackageName, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null);
         		break;
         	case PRIVACY_MODE_ERROR:
         		access = false;
-        		pSetMan.notification(UNKNOWN_PACKAGE_NAME, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, null);
+        		pSetMan.notification(UNKNOWN_PACKAGE_NAME, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
         	}
 
 

@@ -785,7 +785,7 @@ public class PrivacyPersistenceAdapter {
                     deleteSettings(packageName);
                 } else {
                     if (appsInDb.contains(packageName)) { // if duplicate entry, remove all duplicates and keep only one
-                        PrivacySettings pSetTmp = getSettings(packageName, false);
+                        PrivacySettings pSetTmp = (PrivacySettings)getSettings(packageName, false, false);
                         deleteSettings(packageName);
                         saveSettings(pSetTmp);
                     } else {
