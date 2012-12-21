@@ -13,7 +13,7 @@ import java.util.Random;
  * @author Svyatoslav Hresyk 
  * {@hide} 
  */
-public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
+public final class ImmutablePrivacySettings implements IPrivacySettingsBase, Parcelable {
     
     /**
      * Real value, provided by the unmodified Android framework.
@@ -88,251 +88,80 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
     private final Integer _id;
     
     // Application identifiers
-    private String packageName;
-    private int uid;
+    private final String packageName;
+    private final int uid;
     
     //
     // Privacy settings
     //
     
-    private byte deviceIdSetting;
-    private String deviceId;
+    private final byte deviceIdSetting;
+    private final String deviceId;
     
     // Phone and Voice Mailbox Number
-    private byte line1NumberSetting; 
-    private String line1Number;
+    private final byte line1NumberSetting; 
+    private final String line1Number;
     
-    private byte locationGpsSetting;
-    private String locationGpsLat;
-    private String locationGpsLon;
-    private byte locationNetworkSetting;
-    private String locationNetworkLat;
-    private String locationNetworkLon;
+    private final byte locationGpsSetting;
+    private final String locationGpsLat;
+    private final String locationGpsLon;
+    private final byte locationNetworkSetting;
+    private final String locationNetworkLat;
+    private final String locationNetworkLon;
     
     // CountryIso, Operator Code, Operator Name
-    private byte networkInfoSetting;
-    private byte simInfoSetting;
+    private final byte networkInfoSetting;
+    private final byte simInfoSetting;
     
-    private byte simSerialNumberSetting;
-    private String simSerialNumber;
-    private byte subscriberIdSetting;
-    private String subscriberId;
+    private final byte simSerialNumberSetting;
+    private final String simSerialNumber;
+    private final byte subscriberIdSetting;
+    private final String subscriberId;
     
-    private byte accountsSetting;
-    private byte accountsAuthTokensSetting;
-    private byte outgoingCallsSetting;
-    private byte incomingCallsSetting;
+    private final byte accountsSetting;
+    private final byte accountsAuthTokensSetting;
+    private final byte outgoingCallsSetting;
+    private final byte incomingCallsSetting;
     
-    private byte contactsSetting;
-    private byte calendarSetting;
-    private byte mmsSetting;
-    private byte smsSetting;
-    private byte callLogSetting;
-    private byte bookmarksSetting; // browser bookmarks and history
+    private final byte contactsSetting;
+    private final byte calendarSetting;
+    private final byte mmsSetting;
+    private final byte smsSetting;
+    private final byte callLogSetting;
+    private final byte bookmarksSetting; // browser bookmarks and history
     
-    private byte systemLogsSetting;
+    private final byte systemLogsSetting;
     
-    private byte notificationSetting;
+    private final byte notificationSetting;
     
-    private byte intentBootCompletedSetting;
-//    private byte externalStorageSetting;
-    private byte cameraSetting;
-    private byte recordAudioSetting;
-    private byte smsSendSetting;
-    private byte phoneCallSetting;
+    private final byte intentBootCompletedSetting;
+//    private final byte externalStorageSetting;
+    private final byte cameraSetting;
+    private final byte recordAudioSetting;
+    private final byte smsSendSetting;
+    private final byte phoneCallSetting;
 
-    private byte ipTableProtectSetting;
-    private byte iccAccessSetting;
-    private byte addOnManagementSetting;
+    private final byte ipTableProtectSetting;
+    private final byte iccAccessSetting;
+    private final byte addOnManagementSetting;
     
-    private byte androidIdSetting;
-    private String androidID;
+    private final byte androidIdSetting;
+    private final String androidID;
     
-    private byte wifiInfoSetting;
+    private final byte wifiInfoSetting;
     
-    private byte switchConnectivitySetting;
+    private final byte switchConnectivitySetting;
     
-    private byte sendMmsSetting;
+    private final byte sendMmsSetting;
     
-    private byte forceOnlineState; //used to fake online state
+    private final byte forceOnlineState; //used to fake online state
     
-    private byte switchWifiStateSetting;
+    private final byte switchWifiStateSetting;
    
 
-	private int[] allowedContacts;
+	private final int[] allowedContacts;
 	
-	/**
-	 * Constructor to set all Values REAL
-	 * @param _id id in database
-	 * @param packageName	packagename of the app
-	 * @param uid uid of application
-	 * {@hide}
-	 */
-    public PrivacySettings(Integer _id, String packageName, int uid) {
-        this._id = _id;
-        
-        this.packageName = packageName;
-        this.uid = uid;
-        
-        this.deviceIdSetting = REAL;
-        this.deviceId = null;
-        this.line1NumberSetting = REAL;
-        this.line1Number = null;
-        this.locationGpsSetting = REAL;
-        this.locationGpsLat = null;
-        this.locationGpsLon = null;
-        this.locationNetworkSetting = REAL;
-        this.locationNetworkLat = null;
-        this.locationNetworkLon = null;
-        this.networkInfoSetting = REAL;
-        this.simInfoSetting = REAL;
-        this.simSerialNumberSetting = REAL;
-        this.simSerialNumber = null;
-        this.subscriberIdSetting = REAL;
-        this.subscriberId = null;
-        this.accountsSetting = REAL;
-        this.accountsAuthTokensSetting = REAL;
-        this.outgoingCallsSetting = REAL;
-        this.incomingCallsSetting = REAL;
-        this.contactsSetting = REAL;
-        this.calendarSetting = REAL;
-        this.mmsSetting = REAL;
-        this.smsSetting = REAL;
-        this.callLogSetting = REAL;
-        this.bookmarksSetting = REAL;
-        this.systemLogsSetting = REAL;
-        this.notificationSetting = SETTING_NOTIFY_OFF;
-        this.intentBootCompletedSetting = REAL;
-//        this.externalStorageSetting = REAL;
-        this.cameraSetting = REAL; 
-        this.recordAudioSetting = REAL;
-        this.allowedContacts = null;
-        this.smsSendSetting = REAL;
-        this.phoneCallSetting = REAL;
-        this.ipTableProtectSetting = REAL;
-        this.iccAccessSetting = REAL;
-        this.addOnManagementSetting = EMPTY;
-        this.androidIdSetting = REAL;
-        this.androidID = null;
-        this.wifiInfoSetting = REAL;
-        this.switchConnectivitySetting = REAL;
-        this.sendMmsSetting = REAL;
-        this.forceOnlineState = EMPTY;
-        this.switchWifiStateSetting = REAL;
-    }
-    
-    /**
-     * Constructor for two possibilities:<br>
-     * 1. pass allEmpty = true for set all values to empty
-     * 2. pass allEmpty = false for set all possible values to RANDOM 
-     * @param _id id in database
-     * @param packageName packagename of application
-     * @param uid the uid of application
-     * @param allEmpty see description above
-     * {@hide}
-     */
-    public PrivacySettings(Integer _id, String packageName, int uid, boolean allEmpty) {
-        this._id = _id;
-        
-        this.packageName = packageName;
-        this.uid = uid;
-        if(allEmpty){
-        	this.deviceIdSetting = EMPTY;
-	        this.deviceId = null;
-	        this.line1NumberSetting = EMPTY;
-	        this.line1Number = null;
-	        this.locationGpsSetting = EMPTY;
-	        this.locationGpsLat = null;
-	        this.locationGpsLon = null;
-	        this.locationNetworkSetting = EMPTY;
-	        this.locationNetworkLat = null;
-	        this.locationNetworkLon = null;
-	        this.networkInfoSetting = EMPTY;
-	        this.simInfoSetting = EMPTY;
-	        this.simSerialNumberSetting = EMPTY;
-	        this.simSerialNumber = null;
-	        this.subscriberIdSetting = EMPTY;
-	        this.subscriberId = null;
-	        this.accountsSetting = EMPTY;
-	        this.accountsAuthTokensSetting = EMPTY;
-	        this.outgoingCallsSetting = EMPTY;
-	        this.incomingCallsSetting = EMPTY;
-	        this.contactsSetting = EMPTY;
-	        this.calendarSetting = EMPTY;
-	        this.mmsSetting = EMPTY;
-	        this.smsSetting = EMPTY;
-	        this.callLogSetting = EMPTY;
-	        this.bookmarksSetting = EMPTY;
-	        this.systemLogsSetting = EMPTY;
-	        this.notificationSetting = SETTING_NOTIFY_OFF;
-	        this.intentBootCompletedSetting = EMPTY;
-	//        this.externalStorageSetting = REAL;
-	        this.cameraSetting = EMPTY;
-	        this.recordAudioSetting = EMPTY;
-	        this.allowedContacts = null;
-	        this.smsSendSetting = EMPTY;
-	        this.phoneCallSetting = EMPTY;
-	        this.ipTableProtectSetting = EMPTY;
-	        this.iccAccessSetting = EMPTY;
-	        this.addOnManagementSetting = EMPTY;
-	        this.androidIdSetting = EMPTY;
-	        this.androidID = null;
-	        this.wifiInfoSetting = EMPTY;
-	        this.switchConnectivitySetting = EMPTY;
-	        this.sendMmsSetting = EMPTY;
-	        this.forceOnlineState = REAL;
-	        this.switchWifiStateSetting = EMPTY;
-        } else {
-        	this.deviceIdSetting = RANDOM;
-	        this.deviceId = null;
-	        this.line1NumberSetting = RANDOM;
-	        this.line1Number = null;
-	        this.locationGpsSetting = RANDOM;
-	        this.locationGpsLat = null;
-	        this.locationGpsLon = null;
-	        this.locationNetworkSetting = RANDOM;
-	        this.locationNetworkLat = null;
-	        this.locationNetworkLon = null;
-	        this.networkInfoSetting = EMPTY;
-	        this.simInfoSetting = EMPTY;
-	        this.simSerialNumberSetting = RANDOM;
-	        this.simSerialNumber = null;
-	        this.subscriberIdSetting = RANDOM;
-	        this.subscriberId = null;
-	        this.accountsSetting = EMPTY;
-	        this.accountsAuthTokensSetting = EMPTY;
-	        this.outgoingCallsSetting = EMPTY;
-	        this.incomingCallsSetting = EMPTY;
-	        this.contactsSetting = EMPTY;
-	        this.calendarSetting = EMPTY;
-	        this.mmsSetting = EMPTY;
-	        this.smsSetting = EMPTY;
-	        this.callLogSetting = EMPTY;
-	        this.bookmarksSetting = EMPTY;
-	        this.systemLogsSetting = EMPTY;
-	        this.notificationSetting = SETTING_NOTIFY_OFF;
-	        this.intentBootCompletedSetting = EMPTY;
-	//        this.externalStorageSetting = REAL;
-	        this.cameraSetting = EMPTY;
-	        this.recordAudioSetting = EMPTY;
-	        this.allowedContacts = null;
-	        this.smsSendSetting = EMPTY;
-	        this.phoneCallSetting = EMPTY;
-	        this.ipTableProtectSetting = EMPTY;
-	        this.iccAccessSetting = EMPTY;
-	        this.addOnManagementSetting = EMPTY;
-	        this.androidIdSetting = RANDOM;
-	        this.androidID = null;
-	        this.wifiInfoSetting = EMPTY;
-	        this.switchConnectivitySetting = EMPTY;
-	        this.sendMmsSetting = EMPTY;
-	        this.forceOnlineState = REAL;
-	        this.switchWifiStateSetting = EMPTY;
-        }
-    }
-    
-    
-    public PrivacySettings(Integer id, String packageName, int uid, byte deviceIdSetting, String deviceId,
+    public ImmutablePrivacySettings(Integer id, String packageName, int uid, byte deviceIdSetting, String deviceId,
             byte line1NumberSetting, String line1Number, byte locationGpsSetting, String locationGpsLat,
             String locationGpsLon, byte locationNetworkSetting, String locationNetworkLat, 
             String locationNetworkLon, byte networkInfoSetting, byte simInfoSetting, byte simSerialNumberSetting,
@@ -399,40 +228,20 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
 		return switchWifiStateSetting;
 	}
 
-	public void setSwitchWifiStateSetting(byte switchWifiStateSetting) {
-		this.switchWifiStateSetting = switchWifiStateSetting;
-	}
-    
     public byte getForceOnlineState() {
 		return forceOnlineState;
-	}
-
-	public void setForceOnlineState(byte forceOnlineState) {
-		this.forceOnlineState = forceOnlineState;
 	}
 
 	public byte getSendMmsSetting() {
 		return sendMmsSetting;
 	}
 
-	public void setSendMmsSetting(byte sendMmsSetting) {
-		this.sendMmsSetting = sendMmsSetting;
-	}
-
 	public byte getSwitchConnectivitySetting() {
 		return switchConnectivitySetting;
 	}
 
-	public void setSwitchConnectivitySetting(byte switchConnectivitySetting) {
-		this.switchConnectivitySetting = switchConnectivitySetting;
-	}
-    
     public byte getAndroidIdSetting() {
 		return androidIdSetting;
-	}
-
-	public void setAndroidIdSetting(byte androidIdSetting) {
-		this.androidIdSetting = androidIdSetting;
 	}
 	
 	/**
@@ -453,68 +262,33 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
 	public byte getWifiInfoSetting() {
 		return wifiInfoSetting;
 	}
-
-	public void setWifiInfoSetting(byte wifiInfoSetting) {
-		this.wifiInfoSetting = wifiInfoSetting;
-	}
-
-	public void setAndroidID(String androidID) {
-		this.androidID = androidID;
-	}
     
     public byte getIpTableProtectSetting() {
 		return ipTableProtectSetting;
-	}
-
-	public void setIpTableProtectSetting(byte ipTableProtectSetting) {
-		this.ipTableProtectSetting = ipTableProtectSetting;
 	}
 
 	public byte getIccAccessSetting() {
 		return iccAccessSetting;
 	}
 
-	public void setIccAccessSetting(byte iccAccessSetting) {
-		this.iccAccessSetting = iccAccessSetting;
-	}
-
 	public byte getAddOnManagementSetting() {
 		return addOnManagementSetting;
 	}
 
-	public void setAddOnManagementSetting(byte addOnManagementSetting) {
-		this.addOnManagementSetting = addOnManagementSetting;
-	}
-    public byte getSmsSendSetting(){
-	return smsSendSetting;
-    }
-
-    public void setSmsSendSetting(byte smsSendSetting){
-	this.smsSendSetting = smsSendSetting;
+	public byte getSmsSendSetting(){
+		return smsSendSetting;
     }
 
     public byte getPhoneCallSetting(){
-	return phoneCallSetting;
-    }
-
-    public void setPhoneCallSetting(byte phoneCallSetting){
-	this.phoneCallSetting = phoneCallSetting;
+    	return phoneCallSetting;
     }
 
     public byte getRecordAudioSetting(){
-	return recordAudioSetting;
-    }
-
-    public void setRecordAudioSetting(byte recordAudioSetting){
-	this.recordAudioSetting = recordAudioSetting;
+    	return recordAudioSetting;
     }
 
     public byte getCameraSetting(){
-	return cameraSetting;
-    }
-
-    public void setCameraSetting(byte cameraSetting){
-	this.cameraSetting = cameraSetting;
+    	return cameraSetting;
     }
 
     public Integer get_id() {
@@ -524,25 +298,13 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
     public String getPackageName() {
         return packageName;
     }
-    
-    public void setPackageName(String packageName) {
-        this.packageName = packageName;
-    }
-    
+        
     public int getUid() {
         return uid;
     }
 
-    public void setUid(int uid) {
-        this.uid = uid;
-    }
-
     public byte getDeviceIdSetting() {
         return deviceIdSetting;
-    }
-
-    public void setDeviceIdSetting(byte deviceIdSetting) {
-        this.deviceIdSetting = deviceIdSetting;
     }
 
     public String getDeviceId() {
@@ -562,16 +324,8 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return deviceId;
     }
 
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
-    }
-
     public byte getLine1NumberSetting() {
         return line1NumberSetting;
-    }
-
-    public void setLine1NumberSetting(byte line1NumberSetting) {
-        this.line1NumberSetting = line1NumberSetting;
     }
 
     public String getLine1Number() {
@@ -591,26 +345,14 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return line1Number;
     }
 
-    public void setLine1Number(String line1Number) {
-        this.line1Number = line1Number;
-    }
-
     public byte getLocationGpsSetting() {
         return locationGpsSetting;
     }
 
-    public void setLocationGpsSetting(byte locationGpsSetting) {
-        this.locationGpsSetting = locationGpsSetting;
-    }
-    
     public String getLocationGpsLat() {
         if (locationGpsSetting == EMPTY) return "";
         if (locationGpsSetting == RANDOM) return getRandomLat();
         return locationGpsLat;
-    }
-
-    public void setLocationGpsLat(String locationGpsLat) {
-        this.locationGpsLat = locationGpsLat;
     }
 
     public String getLocationGpsLon() {
@@ -619,16 +361,8 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return locationGpsLon;
     }
 
-    public void setLocationGpsLon(String locationGpsLon) {
-        this.locationGpsLon = locationGpsLon;
-    }
-
     public byte getLocationNetworkSetting() {
         return locationNetworkSetting;
-    }
-
-    public void setLocationNetworkSetting(byte locationNetworkSetting) {
-        this.locationNetworkSetting = locationNetworkSetting;
     }
 
     public String getLocationNetworkLat() {
@@ -637,42 +371,22 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return locationNetworkLat;
     }
 
-    public void setLocationNetworkLat(String locationNetworkLat) {
-        this.locationNetworkLat = locationNetworkLat;
-    }
-
     public String getLocationNetworkLon() {
         if (locationNetworkSetting == EMPTY) return "";
         if (locationNetworkSetting == RANDOM) return getRandomLon();
         return locationNetworkLon;
     }
 
-    public void setLocationNetworkLon(String locationNetworkLon) {
-        this.locationNetworkLon = locationNetworkLon;
-    }
-
     public byte getNetworkInfoSetting() {
         return networkInfoSetting;
-    }
-
-    public void setNetworkInfoSetting(byte networkInfoSetting) {
-        this.networkInfoSetting = networkInfoSetting;
     }
 
     public byte getSimInfoSetting() {
         return simInfoSetting;
     }
 
-    public void setSimInfoSetting(byte simInfoSetting) {
-        this.simInfoSetting = simInfoSetting;
-    }
-
     public byte getSimSerialNumberSetting() {
         return simSerialNumberSetting;
-    }
-
-    public void setSimSerialNumberSetting(byte simSerialNumberSetting) {
-        this.simSerialNumberSetting = simSerialNumberSetting;
     }
 
     public String getSimSerialNumber() {
@@ -684,16 +398,8 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return simSerialNumber;
     }
 
-    public void setSimSerialNumber(String simSerialNumber) {
-        this.simSerialNumber = simSerialNumber;
-    }
-
     public byte getSubscriberIdSetting() {
         return subscriberIdSetting;
-    }
-
-    public void setSubscriberIdSetting(byte subscriberIdSetting) {
-        this.subscriberIdSetting = subscriberIdSetting;
     }
 
     public String getSubscriberId() {
@@ -712,125 +418,65 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
         return subscriberId;
     }
 
-    public void setSubscriberId(String subscriberId) {
-        this.subscriberId = subscriberId;
-    }
-
     public byte getAccountsSetting() {
         return accountsSetting;
-    }
-
-    public void setAccountsSetting(byte accountsSetting) {
-        this.accountsSetting = accountsSetting;
     }
 
     public byte getAccountsAuthTokensSetting() {
         return accountsAuthTokensSetting;
     }
 
-    public void setAccountsAuthTokensSetting(byte accountsAuthTokensSetting) {
-        this.accountsAuthTokensSetting = accountsAuthTokensSetting;
-    }
-
     public byte getOutgoingCallsSetting() {
         return outgoingCallsSetting;
-    }
-
-    public void setOutgoingCallsSetting(byte outgoingCallsSetting) {
-        this.outgoingCallsSetting = outgoingCallsSetting;
     }
     
     public byte getIncomingCallsSetting() {
         return incomingCallsSetting;
     }
     
-    public void setIncomingCallsSetting(byte incomingCallsSetting) {
-        this.incomingCallsSetting = incomingCallsSetting;
-    }
-
     public byte getContactsSetting() {
         return contactsSetting;
-    }
-
-    public void setContactsSetting(byte contactsSetting) {
-        this.contactsSetting = contactsSetting;
     }
 
     public byte getCalendarSetting() {
         return calendarSetting;
     }
 
-    public void setCalendarSetting(byte calendarSetting) {
-        this.calendarSetting = calendarSetting;
-    }
-
     public byte getMmsSetting() {
         return mmsSetting;
-    }
-
-    public void setMmsSetting(byte mmsSetting) {
-        this.mmsSetting = mmsSetting;
     }
 
     public byte getSmsSetting() {
         return smsSetting;
     }
 
-    public void setSmsSetting(byte smsSetting) {
-        this.smsSetting = smsSetting;
-    }
-
     public byte getCallLogSetting() {
         return callLogSetting;
-    }
-
-    public void setCallLogSetting(byte callLogSetting) {
-        this.callLogSetting = callLogSetting;
     }
 
     public byte getBookmarksSetting() {
         return bookmarksSetting;
     }
 
-    public void setBookmarksSetting(byte bookmarksSetting) {
-        this.bookmarksSetting = bookmarksSetting;
-    }
-
     public byte getSystemLogsSetting() {
         return systemLogsSetting;
-    }
-
-    public void setSystemLogsSetting(byte systemLogsSetting) {
-        this.systemLogsSetting = systemLogsSetting;
     }
 
     public byte getIntentBootCompletedSetting() {
         return intentBootCompletedSetting;
     }
 
-    public void setIntentBootCompletedSetting(byte intentBootCompletedSetting) {
-        this.intentBootCompletedSetting = intentBootCompletedSetting;
-    }
-
     public byte getNotificationSetting() {
         return notificationSetting;
-    }
-
-    public void setNotificationSetting(byte notificationSetting) {
-        this.notificationSetting = notificationSetting;
     }
     
     public int[] getAllowedContacts() {
         return allowedContacts;
     }
 
-    public void setAllowedContacts(int[] allowedContacts) {
-        this.allowedContacts = allowedContacts;
-    }
-
     @Override
     public String toString() {
-        return "PrivacySettings [_id=" + _id + ", accountsAuthTokensSetting=" + accountsAuthTokensSetting
+        return "ImmutablePrivacySettings [_id=" + _id + ", accountsAuthTokensSetting=" + accountsAuthTokensSetting
                 + ", accountsSetting=" + accountsSetting + ", bookmarksSetting=" + bookmarksSetting
                 + ", calendarSetting=" + calendarSetting + ", callLogSetting=" + callLogSetting + ", contactsSetting="
                 + contactsSetting + ", deviceId=" + deviceId + ", deviceIdSetting=" + deviceIdSetting
@@ -877,18 +523,18 @@ public final class PrivacySettings implements IPrivacySettingsBase, Parcelable {
      * Parcelable implementation
      */
 
-    public static final Parcelable.Creator<PrivacySettings> CREATOR = new
-            Parcelable.Creator<PrivacySettings>() {
-                public PrivacySettings createFromParcel(Parcel in) {
-                    return new PrivacySettings(in);
+    public static final Parcelable.Creator<ImmutablePrivacySettings> CREATOR = new
+            Parcelable.Creator<ImmutablePrivacySettings>() {
+                public ImmutablePrivacySettings createFromParcel(Parcel in) {
+                    return new ImmutablePrivacySettings(in);
                 }
 
-                public PrivacySettings[] newArray(int size) {
-                    return new PrivacySettings[size];
+                public ImmutablePrivacySettings[] newArray(int size) {
+                    return new ImmutablePrivacySettings[size];
                 }
             };
     
-    public PrivacySettings(Parcel in) {
+    public ImmutablePrivacySettings(Parcel in) {
         int _id = in.readInt();
         this._id = (_id == -1) ? null : _id;
         

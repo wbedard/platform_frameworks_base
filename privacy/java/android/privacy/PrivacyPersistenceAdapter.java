@@ -9,6 +9,7 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.os.FileUtils;
+import android.privacy.IPrivacySettingsBase;
 import android.util.Log;
 
 import java.io.File;
@@ -325,8 +326,8 @@ public class PrivacyPersistenceAdapter {
         return success;
     }
     
-    public synchronized PrivacySettings getSettings(String packageName, boolean forceCloseDB) {
-        PrivacySettings s = null;
+    public synchronized IPrivacySettingsBase getSettings(String packageName, boolean forceCloseDB, boolean getImmutable) {
+        IPrivacySettingsBase s = null;
 
         if (packageName == null) {
             Log.e(TAG, "getSettings - insufficient application identifier - package name is required");
@@ -346,48 +347,53 @@ public class PrivacyPersistenceAdapter {
             return s;
         }
             
-        Cursor c = null;
+        Cursor contactsCursor = null;
+        Cursor settingsCursor = null;
 
         try {
-            c = query(db, TABLE_SETTINGS, DATABASE_FIELDS, "packageName=?", new String[] { packageName }, null, null, null, null);
+            settingsCursor = query(db, TABLE_SETTINGS, DATABASE_FIELDS, "packageName=?", new String[] { packageName }, null, null, null, null);
+            
+            
+            if (settingsCursor != null && settingsCursor.moveToFirst()) {
+            	contactsCursor = rawQuery(db, "SELECT * FROM allowed_contacts WHERE settings_id=" + Integer.toString(settingsCursor.getInt(0)) + ";");
 
-            if (c != null && c.moveToFirst()) {
-                s = new PrivacySettings(c.getInt(0), c.getString(1), c.getInt(2), (byte)c.getShort(3), c.getString(4), 
-                        (byte)c.getShort(5), c.getString(6), (byte)c.getShort(7), c.getString(8), c.getString(9), (byte)c.getShort(10), 
-                        c.getString(11), c.getString(12), (byte)c.getShort(13), (byte)c.getShort(14), (byte)c.getShort(15), 
-                        c.getString(16), (byte)c.getShort(17), c.getString(18), (byte)c.getShort(19), (byte)c.getShort(20), 
-                        (byte)c.getShort(21), (byte)c.getShort(22), (byte)c.getShort(23), (byte)c.getShort(24), (byte)c.getShort(25), 
-                        (byte)c.getShort(26), (byte)c.getShort(27), (byte)c.getShort(28), (byte)c.getShort(29), (byte)c.getShort(30), 
-                        (byte)c.getShort(31), (byte)c.getShort(32), (byte)c.getShort(33), (byte)c.getShort(34), null, (byte)c.getShort(35), (byte)c.getShort(36), 
-                        (byte)c.getShort(37), (byte)c.getShort(38), (byte)c.getShort(39), (byte)c.getShort(40), c.getString(41), (byte)c.getShort(42),
-                        (byte)c.getShort(43), (byte)c.getShort(44), (byte)c.getShort(45), (byte)c.getShort(46));
-                
-                // get allowed contacts IDs if necessary
-//                Log.d(TAG, "getSettings - looking for allowed contacts for " + s.get_id());
-//                c = query(db, TABLE_ALLOWED_CONTACTS, null, 
-//                        "settings_id=?", new String[] { Integer.toString(s.get_id()) }, null, null, null, null);
-                c = rawQuery(db, "SELECT * FROM allowed_contacts WHERE settings_id=" + Integer.toString(s.get_id()) + ";");
-                
-                if (c != null && c.getCount() > 0) {
-//                    Log.d(TAG, "getSettings - found allowed contacts");
-                    int[] allowedContacts = new int[c.getCount()];
-                    while (c.moveToNext()) allowedContacts[c.getPosition()] = c.getInt(1);
-                    s.setAllowedContacts(allowedContacts);
-                }
-//                    Log.d(TAG, "getSettings - found settings entry for package: " + packageName + " UID: " + uid);
-            } 
-//            else {
-//                Log.e(TAG, "getSettings - no settings found for package: " + packageName);
-//            }
+            	int[] allowedContacts = null;
+            	if (contactsCursor != null && contactsCursor.getCount() > 0 && contactsCursor.moveToFirst()) {
+            		allowedContacts = new int[contactsCursor.getCount()];
+            		do {
+            			allowedContacts[contactsCursor.getPosition()] = contactsCursor.getInt(1);
+            		} while (contactsCursor.moveToNext());
+            	}
+
+            	if (getImmutable) {
+	                s = new ImmutablePrivacySettings(settingsCursor.getInt(0), settingsCursor.getString(1), settingsCursor.getInt(2), (byte)settingsCursor.getShort(3), settingsCursor.getString(4), 
+	                        (byte)settingsCursor.getShort(5), settingsCursor.getString(6), (byte)settingsCursor.getShort(7), settingsCursor.getString(8), settingsCursor.getString(9), (byte)settingsCursor.getShort(10), 
+	                        settingsCursor.getString(11), settingsCursor.getString(12), (byte)settingsCursor.getShort(13), (byte)settingsCursor.getShort(14), (byte)settingsCursor.getShort(15), 
+	                        settingsCursor.getString(16), (byte)settingsCursor.getShort(17), settingsCursor.getString(18), (byte)settingsCursor.getShort(19), (byte)settingsCursor.getShort(20), 
+	                        (byte)settingsCursor.getShort(21), (byte)settingsCursor.getShort(22), (byte)settingsCursor.getShort(23), (byte)settingsCursor.getShort(24), (byte)settingsCursor.getShort(25), 
+	                        (byte)settingsCursor.getShort(26), (byte)settingsCursor.getShort(27), (byte)settingsCursor.getShort(28), (byte)settingsCursor.getShort(29), (byte)settingsCursor.getShort(30), 
+	                        (byte)settingsCursor.getShort(31), (byte)settingsCursor.getShort(32), (byte)settingsCursor.getShort(33), (byte)settingsCursor.getShort(34), allowedContacts, (byte)settingsCursor.getShort(35), (byte)settingsCursor.getShort(36), 
+	                        (byte)settingsCursor.getShort(37), (byte)settingsCursor.getShort(38), (byte)settingsCursor.getShort(39), (byte)settingsCursor.getShort(40), settingsCursor.getString(41), (byte)settingsCursor.getShort(42),
+	                        (byte)settingsCursor.getShort(43), (byte)settingsCursor.getShort(44), (byte)settingsCursor.getShort(45), (byte)settingsCursor.getShort(46));
+            	} else {
+	                s = new PrivacySettings(settingsCursor.getInt(0), settingsCursor.getString(1), settingsCursor.getInt(2), (byte)settingsCursor.getShort(3), settingsCursor.getString(4), 
+	                        (byte)settingsCursor.getShort(5), settingsCursor.getString(6), (byte)settingsCursor.getShort(7), settingsCursor.getString(8), settingsCursor.getString(9), (byte)settingsCursor.getShort(10), 
+	                        settingsCursor.getString(11), settingsCursor.getString(12), (byte)settingsCursor.getShort(13), (byte)settingsCursor.getShort(14), (byte)settingsCursor.getShort(15), 
+	                        settingsCursor.getString(16), (byte)settingsCursor.getShort(17), settingsCursor.getString(18), (byte)settingsCursor.getShort(19), (byte)settingsCursor.getShort(20), 
+	                        (byte)settingsCursor.getShort(21), (byte)settingsCursor.getShort(22), (byte)settingsCursor.getShort(23), (byte)settingsCursor.getShort(24), (byte)settingsCursor.getShort(25), 
+	                        (byte)settingsCursor.getShort(26), (byte)settingsCursor.getShort(27), (byte)settingsCursor.getShort(28), (byte)settingsCursor.getShort(29), (byte)settingsCursor.getShort(30), 
+	                        (byte)settingsCursor.getShort(31), (byte)settingsCursor.getShort(32), (byte)settingsCursor.getShort(33), (byte)settingsCursor.getShort(34), allowedContacts, (byte)settingsCursor.getShort(35), (byte)settingsCursor.getShort(36), 
+	                        (byte)settingsCursor.getShort(37), (byte)settingsCursor.getShort(38), (byte)settingsCursor.getShort(39), (byte)settingsCursor.getShort(40), settingsCursor.getString(41), (byte)settingsCursor.getShort(42),
+	                        (byte)settingsCursor.getShort(43), (byte)settingsCursor.getShort(44), (byte)settingsCursor.getShort(45), (byte)settingsCursor.getShort(46));
+
+            	}
+            }
         } catch (Exception e) {
             Log.e(TAG, "getSettings - failed to get settings for package: " + packageName, e);
             e.printStackTrace();
-            if (c != null) c.close();
         } finally {
-            if (c != null) c.close();
-//            if (forceCloseDB && db != null && db.isOpen()) {
-//                db.close();
-//            } else {
+        	if (contactsCursor != null) contactsCursor.close();
+            if (settingsCursor != null) settingsCursor.close();
             synchronized (readingThreads) {
                 readingThreads--;
                 // only close DB if no other threads are reading
@@ -395,12 +401,10 @@ public class PrivacyPersistenceAdapter {
                     db.close();
                 }
             }
-//            }
         }
-        
-//        Log.d(TAG, "getSettings - returning settings: " + s);
         return s;
     }
+
     
     /**
      * Saves the settings object fields into DB and into plain text files where applicable. 

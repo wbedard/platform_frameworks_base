@@ -1,10 +1,6 @@
 package android.privacy;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import android.content.Context;
-import android.os.Process;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -14,7 +10,7 @@ import android.util.Log;
  * TODO: selective contacts access
  * {@hide}
  */
-public final class PrivacySettingsManager {
+public class PrivacySettingsManager {
 
     private static final String TAG = "PrivacySettingsManager";
     
@@ -22,7 +18,7 @@ public final class PrivacySettingsManager {
 
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
     
-    private final IPrivacySettingsManager service;
+    private IPrivacySettingsManager service;
     
     /**
      * @hide - this should be instantiated through Context.getSystemService
@@ -52,31 +48,12 @@ public final class PrivacySettingsManager {
             return null;
         }
     }
-    
-    public List<PrivacySettings> getMySettings() {
+
+    public ImmutablePrivacySettings getImmutableSettings(String packageName) {
         try {
-          if (service != null) {
-              return service.getSettingsByPidUid(Process.myPid(), Process.myUid());
-          } else {
-              Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
-              return null;
-          }
-      } catch (RemoteException e) {
-          e.printStackTrace();
-          return null;
-      }
-    }
-    
-    public List<String> getMyPackageName() {
-        try {
+//            Log.d(TAG, "getSettings for package: " + packageName + " UID: " + uid);
             if (service != null) {
-                List<PrivacySettings> settings = service.getSettingsByPidUid(Process.myPid(), Process.myUid());
-                List<String> myPackageNames = new ArrayList<String>(settings.size());
-                for (PrivacySettings privacySettings : settings) {
-                	myPackageNames.add(privacySettings.getPackageName());
-                }
-                settings = null;
-                return myPackageNames;
+                return service.getImmutableSettings(packageName);
             } else {
                 Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
                 return null;
@@ -87,6 +64,7 @@ public final class PrivacySettingsManager {
         }
     }
 
+    
     public boolean saveSettings(PrivacySettings settings) {
         try {
 //            Log.d(TAG, "saveSettings - " + settings);
@@ -130,23 +108,28 @@ public final class PrivacySettingsManager {
         return false;
     }
     
-    public void notification(String packageName, int uid, byte accessMode, String dataType, String output, PrivacySettings pSet) {
-        notification(packageName, accessMode, dataType, output, pSet);
+    @Deprecated
+    public void notification(String packageName, int uid, byte accessMode, String dataType, String output, IPrivacySettingsBase pSet) {
+        notification(packageName, accessMode, dataType, output);
+    }
+
+    @Deprecated
+    public void notification(String packageName, byte accessMode, String dataType, String output, IPrivacySettingsBase pSet) {
+    	notification(packageName, accessMode, dataType, output);
     }
     
-    public void notification(String packageName, byte accessMode, String dataType, String output, PrivacySettings pSet) {
-//        if (pSet != null && pSet.getNotificationSetting() == PrivacySettings.SETTING_NOTIFY_ON) {
-            try {
-                if (service != null) {
-                    service.notification(packageName, accessMode, dataType, output);
-                } else {
-                    Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
-                }            
-            } catch (RemoteException e) {
-                Log.e(TAG, "RemoteException in notification: ", e);
-            }
-//        }
-    }
+    public void notification(String packageName, byte accessMode, String dataType, String output) {
+        try {
+            if (service != null) {
+                service.notification(packageName, accessMode, dataType, output);
+            } else {
+                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+            }            
+        } catch (RemoteException e) {
+            Log.e(TAG, "RemoteException in notification: ", e);
+        }
+}
+
     
     public void registerObservers() {
         try {

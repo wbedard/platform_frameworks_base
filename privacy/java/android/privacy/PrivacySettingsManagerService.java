@@ -1,21 +1,11 @@
 package android.privacy;
 
-import android.app.ActivityManager;
-import android.app.ActivityManagerNative;
-import android.app.IActivityManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.IPackageManager;
 import android.os.Binder;
-import android.os.Process;
-import android.os.RemoteException;
-import android.os.ServiceManager;
-import android.privacy.PrivacySettings;
 import android.util.Log;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * PrivacySettingsManager's counterpart running in the system process, which
@@ -67,10 +57,22 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
 	      || context.getPackageName().equals("com.android.privacy.pdroid.extension"))  //we have to add our addon package here, to get real settings
 //	  if (Binder.getCallingUid() != 1000)
 //            	context.enforceCallingPermission(READ_PRIVACY_SETTINGS, "Requires READ_PRIVACY_SETTINGS");
-          return persistenceAdapter.getSettings(packageName, false);
+          return (PrivacySettings)persistenceAdapter.getSettings(packageName, false, false);
           else return null;
     }
 
+    public ImmutablePrivacySettings getImmutableSettings(String packageName) {
+//      Log.d(TAG, "getSettings - " + packageName);
+        if (enabled || context.getPackageName().equals("com.privacy.pdroid") || context.getPackageName().equals("com.privacy.pdroid.Addon") 
+	      || context.getPackageName().equals("com.android.privacy.pdroid.extension"))  //we have to add our addon package here, to get real settings
+//	  if (Binder.getCallingUid() != 1000)
+//          	context.enforceCallingPermission(READ_PRIVACY_SETTINGS, "Requires READ_PRIVACY_SETTINGS");
+        return (ImmutablePrivacySettings)persistenceAdapter.getSettings(packageName, false, true);
+        else return null;
+  }
+
+    
+    
     public boolean saveSettings(PrivacySettings settings) {
         Log.d(TAG, "saveSettings - checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
         // check permission if not being called by the system process
@@ -157,93 +159,5 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         } else {
             return false;
         }
-    }
-    
-    /**
-     * Get all matching privacy settings for the provided PID or UID. Because we don't have
-     * the app context, we infer the package name PID, and failing that from UID.
-     * One UID can be tied to multiple packages: settings for all packages matching
-     * the PID or UID are returned
-     * @param pid
-     * @param uid
-     * @return  List of PrivacySettings for the provided PID, or failing that for the provided UID
-     */
-    public List<PrivacySettings> getSettingsByPidUid(int pid, int uid) throws RemoteException {
-		IActivityManager activityManager = ActivityManagerNative.getDefault();
-		
-		String [] packageNames = null;
-		
-		// We can detect the current App process, and the current Service process.
-		// However, we can't detect the current 'task' process
-		if (pid != 0) {
-			try {
-				for(ActivityManager.RunningAppProcessInfo processInfo : activityManager.getRunningAppProcesses()){
-		    		if(processInfo.pid == pid){
-		    			Log.v(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Detected app using camera:" + processInfo.processName);
-		    			packageNames = new String [] {processInfo.processName};
-		    		}
-		    	}
-			} catch (Exception e) {
-				Log.e(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Error occurred while attempting to get running app processes");
-			}
-
-			try {
-		    	for(ActivityManager.RunningServiceInfo processInfo : (List<ActivityManager.RunningServiceInfo>)activityManager.getServices(100000,0)){
-		    		if (processInfo.pid == Process.myPid()){
-		    			Log.v(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Detected service using camera:" + processInfo.clientPackage);
-		    			packageNames = new String [] {processInfo.clientPackage};
-		    		}
-		    	}
-			} catch (Exception e) {
-				Log.e(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Error occurred while attempting to get services processes");
-			}
-			
-			if (packageNames == null) {
-				Log.d(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: did not find process matching current PID. Attempting to use PackageManager.");
-			}
-		} else {
-			Log.d(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Provided PID was 0, so could not detect package name from PID. Attempting to use PackageManager");
-		}
-
-		if (packageNames == null && uid != 0) {
-	    	try{
-				IPackageManager packageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
-	    		packageNames = packageManager.getPackagesForUid(uid);
-	    		Log.v(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Detected " + Integer.toString(packageNames.length) + " possible apps using camera by uid:" + Integer.toString(uid));
-	    	} catch(Exception e){
-	    		e.printStackTrace();
-	    		Log.d(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: An exception occurred while reading package names ", e);
-	    		throw new RemoteException();
-	    	}
-		} else {
-			Log.d(TAG,"PrivacySettingsManagerService:getSettingsByPidUid: Provided UID was 0, so could not detect package name from UID");
-		}
-		
-		if (packageNames == null || packageNames.length == 0) {
-			Log.d(TAG,"PrivacySettingsManagerService:getPackageName: Failed to obtain package name with either PID or UID");
-			throw new RemoteException();
-		}
-		
-    	try{
-    		List<PrivacySettings> privacySettingsList = new ArrayList<PrivacySettings>(packageNames.length);
-    		PrivacySettings pSet = null;
-    		
-    		for(String packageName : packageNames){
-    			this.getSettings(packageName);
-    			//No settings is interpreted as 'allow'
-    			if(pSet != null){
-    				privacySettingsList.add(pSet);
-    			}
-    		}
-    		
-    		// if there are no matching settings, return an empty package list.
-    		// this (poorly) allows differentiation between an error (which should lead to 'denied' behaviour),
-    		// and no settings being found (which should lead to 'allow' behaviour
-    		return privacySettingsList;
-    	}
-    	catch (Exception e){
-    		Log.e(TAG,"PrivacySettingsManagerService:getPackageName: An exception occurred while retrieving settings for packages", e);
-    		throw new RemoteException();
-    	}
     }
 }

@@ -1,10 +1,12 @@
 package android.privacy;
 import android.privacy.PrivacySettings;
+import android.privacy.ImmutablePrivacySettings;
 
 /** {@hide} */
 interface IPrivacySettingsManager
 {
     PrivacySettings getSettings(String packageName);
+    ImmutablePrivacySettings getImmutableSettings(String packageName);
     boolean saveSettings(in PrivacySettings settings);
     boolean deleteSettings(String packageName);
     void notification(String packageName, byte accessMode, String dataType, String output);
@@ -15,5 +17,4 @@ interface IPrivacySettingsManager
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
-    List<PrivacySettings> getSettingsByPidUid(int pid, int uid);
 }
