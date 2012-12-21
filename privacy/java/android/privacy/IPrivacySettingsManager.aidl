@@ -15,4 +15,5 @@ interface IPrivacySettingsManager
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
+    List<PrivacySettings> getSettingsByPidUid(int pid, int uid);
 }

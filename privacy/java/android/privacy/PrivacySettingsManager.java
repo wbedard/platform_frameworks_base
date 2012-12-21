@@ -1,6 +1,10 @@
 package android.privacy;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
+import android.os.Process;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -10,7 +14,7 @@ import android.util.Log;
  * TODO: selective contacts access
  * {@hide}
  */
-public class PrivacySettingsManager {
+public final class PrivacySettingsManager {
 
     private static final String TAG = "PrivacySettingsManager";
     
@@ -18,7 +22,7 @@ public class PrivacySettingsManager {
 
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
     
-    private IPrivacySettingsManager service;
+    private final IPrivacySettingsManager service;
     
     /**
      * @hide - this should be instantiated through Context.getSystemService
@@ -39,6 +43,40 @@ public class PrivacySettingsManager {
 //            Log.d(TAG, "getSettings for package: " + packageName + " UID: " + uid);
             if (service != null) {
                 return service.getSettings(packageName);
+            } else {
+                Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
+                return null;
+            }
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    public List<PrivacySettings> getMySettings() {
+        try {
+          if (service != null) {
+              return service.getSettingsByPidUid(Process.myPid(), Process.myUid());
+          } else {
+              Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
+              return null;
+          }
+      } catch (RemoteException e) {
+          e.printStackTrace();
+          return null;
+      }
+    }
+    
+    public List<String> getMyPackageName() {
+        try {
+            if (service != null) {
+                List<PrivacySettings> settings = service.getSettingsByPidUid(Process.myPid(), Process.myUid());
+                List<String> myPackageNames = new ArrayList<String>(settings.size());
+                for (PrivacySettings privacySettings : settings) {
+                	myPackageNames.add(privacySettings.getPackageName());
+                }
+                settings = null;
+                return myPackageNames;
             } else {
                 Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
                 return null;

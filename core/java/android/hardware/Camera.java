@@ -200,11 +200,17 @@ public class Camera {
     private static final String PRIVACY_TAG = "PM,Camera";
 
     // need to keep a connection to the privacy settings manager to send notifications
-    private PrivacySettingsManager pSetMan;
-    private PrivacySettings pSet;
+    private final PrivacySettingsManager pSetMan;
     
-    private String guessedPackageName = null;
-    private int privacyMode = PRIVACY_MODE_UNKNOWN;
+    private final class PrivacyResult {
+    	int accessResult;
+    	PrivacySettings privacySettings;
+    	
+    	public PrivacyResult(int accessResult, PrivacySettings privacySettings) {
+    		this.accessResult = accessResult;
+    		this.privacySettings = privacySettings;
+    	}
+    }
     
     //END PRIVACY
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,49 +218,6 @@ public class Camera {
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //BEGIN PRIVACY
-    /**
-     * {@hide}
-     * @return package names of current process which is using this object or null if something went wrong
-     */
-    private String[] getPackageName(){
-		IActivityManager activityManager = ActivityManagerNative.getDefault();
-		
-		// We can detect the current App process, and the current Service process.
-		// However, we can't detect the current 'task' process
-		try {
-			for(ActivityManager.RunningAppProcessInfo processInfo : activityManager.getRunningAppProcesses()){
-	    		if(processInfo.pid == Process.myPid()){
-	    			Log.v(PRIVACY_TAG,"Camera:getPackageName: Detected app using camera:" + processInfo.processName);
-	    			return new String [] {processInfo.processName};
-	    		}
-	    	}
-		} catch (RemoteException e) {
-			Log.e(PRIVACY_TAG,"Camera:getPackageName: Error occurred while attempting to get running app processes");
-		}
-		try {
-	    	for(ActivityManager.RunningServiceInfo processInfo : (List<ActivityManager.RunningServiceInfo>)activityManager.getServices(100000,0)){
-	    		if (processInfo.pid == Process.myPid()){
-	    			Log.v(PRIVACY_TAG,"Camera:getPackageName: Detected service using camera:" + processInfo.clientPackage);
-	    			return new String [] {processInfo.clientPackage};
-	    		}
-	    	}
-		} catch (RemoteException e) {
-			Log.e(PRIVACY_TAG,"Camera:getPackageName: Error occurred while attempting to get services processes");
-		}
-    	
-		Log.d(PRIVACY_TAG,"Camera:getPackageName: did not find process matching current PID. Attempting to use PackageManager.");
-		
-    	try{
-			IPackageManager packageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
-			int uid = Process.myUid();
-    		String[] package_names = packageManager.getPackagesForUid(uid);
-    		return package_names;
-    	} catch(Exception e){
-    		e.printStackTrace();
-    		Log.e(PRIVACY_TAG,"something went wrong with getting package name");
-    		return null;
-    	}
-    }
     /**
      * This method returns the fake image which should be in system folder! 
      * @return byte array of jpeg fake image or null if something went wrong
@@ -288,45 +251,49 @@ public class Camera {
 
     /**
      * {@hide}
-     * Checks if the current package is permitted access to the camera. Because we don't have
-     * the app context, we infer the package name PID, and failing that from UID.
-     * One UID can be tied to multiple packages: if we have to fall back to the UID,
-     * and >1 package has that UID, then camera access is only permitted if *all*
-     * packages with that UID have camera access
-     * @return IS_ALLOWED (-1) if all packages allowed, IS_NOT_ALLOWED(-2) if one of these packages not allowed, GOT_ERROR (-3) if something went wrong
+     * Checks if the current package is permitted access to the camera.
+     * To minimise the risk of successful reflection attacks, all
+     * processing/storage/cache is performed by the privacy settings manager service
+     * @return Object []: index [0] = PRIVACY_MODE_ALLOWED if all packages allowed, PRIVACY_MODE_DENIED if one of these packages not allowed, PRIVACY_MODE_ERROR if something went wrong; index[1] = settings for the denied package if denied, the first matching package settings if allowed, none if error
      */
-    private int checkIfPackagesAllowed(){
+    private PrivacyResult checkIfPackagesAllowed(){
     	try{
-    		pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
-
     		if(pSetMan == null){
     			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Could not access privacy service");
-    			return PRIVACY_MODE_ERROR;
+    			return new PrivacyResult(PRIVACY_MODE_ERROR, null);
     		}
-    		String[] packageNames = getPackageName();
+    		
+    		List<PrivacySettings> privacySettingsList = null;
+    		try {
+    			//privacySettingsList = pSetMan.getSettingsByPidUid(Process.myPid(), Process.myUid());
+    			privacySettingsList = pSetMan.getMySettings();
+    		} catch (Exception e) {
+    			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Exception occurred while attempting to retrieve settings for the current app");
+    			return new PrivacyResult(PRIVACY_MODE_ERROR, null);
+    		}
 
-    		if(packageNames == null){
+    		if(privacySettingsList == null || privacySettingsList.size() == 0){
     			Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Failed to identify package using camera");
-    			return PRIVACY_MODE_ERROR;
+    			return new PrivacyResult(PRIVACY_MODE_ERROR, null);
     		}
 
-    		for(String packageName : packageNames){
-				this.guessedPackageName = packageName;
-				
-    			pSet = pSetMan.getSettings(packageName);
+    		for(PrivacySettings privacySettings : privacySettingsList){
+    			
     			//No settings is interpreted as 'allow'
-    			if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){
-    				if (packageNames.length > 1) {
-    					Log.d(PRIVACY_TAG,"Camera:checkIfPackagesAllowed:Access denied: 1+ of the (multiple) packages with UID " + Integer.toString(Process.myUid()) + " (package " + packageName + ") is not permitted camera access");
+    			if(privacySettings != null && (privacySettings.getCameraSetting() != PrivacySettings.REAL)){
+    				if (privacySettingsList.size() > 1) {
+    					Log.d(PRIVACY_TAG,"Camera:checkIfPackagesAllowed:Access denied: 1+ of the (multiple) packages with UID " + Integer.toString(Process.myUid()) + " (package " + privacySettings.getPackageName() + ") is not permitted camera access");
     				}
-    				return PRIVACY_MODE_DENIED;
+    				return new PrivacyResult(PRIVACY_MODE_DENIED, privacySettings);
     			}
     		}
-    		return PRIVACY_MODE_ALLOWED;
+    		// if privacy mode is allowed, we only know that none of the packages for this UID/PID were denied,
+    		// not specifically which package we are in; provide the 'first' as a best guess
+    		return new PrivacyResult(PRIVACY_MODE_ALLOWED, privacySettingsList.get(0));
     	}
     	catch (Exception e){
     		Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Exception occurred", e);
-    		return PRIVACY_MODE_ERROR;
+    		return new PrivacyResult(PRIVACY_MODE_ERROR, null);
     	}
     }
 
@@ -508,7 +475,9 @@ public class Camera {
         } else {
             mEventHandler = null;
         }
-
+        
+        pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        
         native_setup(new WeakReference<Camera>(this), cameraId);
     }
 
@@ -516,6 +485,7 @@ public class Camera {
      * An empty Camera for testing purpose.
      */
     Camera() {
+        pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
     }
 
     protected void finalize() {
@@ -925,24 +895,24 @@ public class Camera {
 	    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //BEGIN PRIVACY
 
+        	Log.d(PRIVACY_TAG,"Camera:handleMessage");
         	boolean access = true;
-        	if (privacyMode == PRIVACY_MODE_UNKNOWN) {
-        		privacyMode = checkIfPackagesAllowed();
-        	}
+        	PrivacyResult privacyResult = checkIfPackagesAllowed();
 
-        	switch (privacyMode) {
+        	switch (privacyResult.accessResult) {
         	case PRIVACY_MODE_DENIED:
         		access = false;
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSet);
+        		pSetMan.notification(privacyResult.privacySettings.getPackageName(), 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, privacyResult.privacySettings);
         		break;
         	case PRIVACY_MODE_ALLOWED:
-        		pSetMan.notification(guessedPackageName, 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSet);
+        		pSetMan.notification(privacyResult.privacySettings.getPackageName(), 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, privacyResult.privacySettings);
         		break;
         	case PRIVACY_MODE_ERROR:
         		access = false;
         		pSetMan.notification(UNKNOWN_PACKAGE_NAME, 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, null);
         	}
 
+        	privacyResult = null;
 
         	switch(msg.what) {
         	case CAMERA_MSG_SHUTTER:
@@ -1290,22 +1260,19 @@ public class Camera {
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //BEGIN PRIVACY
-        //check if we are in privacy mode!, this is a to hard method to prevent from making pictures, because camera will freeze!
+        // check if we are in privacy mode!, this is a to hard method to prevent from making pictures, because camera will freeze!
         
-        if(privacyMode == PRIVACY_MODE_UNKNOWN){
-    		privacyMode = checkIfPackagesAllowed();
-        }
-        if(privacyMode != PRIVACY_MODE_ALLOWED){
-        	//		mShutterCallback = null;
+    	PrivacyResult privacyResult = checkIfPackagesAllowed();
+
+    	switch (privacyResult.accessResult) {
+    	case PRIVACY_MODE_DENIED:
+    	case PRIVACY_MODE_ERROR:
         	mRawImageCallback = null;
         	Log.i(PRIVACY_TAG,"Camera:takePicture:Blocked rawImageCallback -> it will never be called!");
-        	//        	mPostviewCallback = null;
-        	//        	mJpegCallback = null;
-        	//		dataAccess(false);
-        }
-        //	else{
-        //		dataAccess(true);
-        //	}
+    	}
+
+    	privacyResult = null;
+
         //END PRIVACY
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
