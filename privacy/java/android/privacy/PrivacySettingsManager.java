@@ -10,12 +10,11 @@ import android.util.Log;
  * TODO: selective contacts access
  * {@hide}
  */
-public class PrivacySettingsManager {
+public final class PrivacySettingsManager {
 
     private static final String TAG = "PrivacySettingsManager";
     
     public static final String ACTION_PRIVACY_NOTIFICATION = "com.privacy.pdroid.PRIVACY_NOTIFICATION";
-
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
     
     private IPrivacySettingsManager service;
@@ -30,13 +29,13 @@ public class PrivacySettingsManager {
         this.service = service;
     }
 
+    @Deprecated
     public PrivacySettings getSettings(String packageName, int uid) {
         return getSettings(packageName);
     }
     
     public PrivacySettings getSettings(String packageName) {
         try {
-//            Log.d(TAG, "getSettings for package: " + packageName + " UID: " + uid);
             if (service != null) {
                 return service.getSettings(packageName);
             } else {
@@ -65,12 +64,7 @@ public class PrivacySettingsManager {
     }
     
     public boolean deleteSettings(String packageName) {
-        return deleteSettings(packageName, -1);
-    }
-    
-    public boolean deleteSettings(String packageName, int uid) {
         try {
-//            Log.d(TAG, "deleteSettings - "  + packageName + " UID: " + uid);
             if (service != null) {
                 return service.deleteSettings(packageName);
             } else {
@@ -83,6 +77,11 @@ public class PrivacySettingsManager {
         }
     }
     
+    @Deprecated
+    public boolean deleteSettings(String packageName, int uid) {
+        return deleteSettings(packageName);
+    }
+    
     /**
      * Checks whether the PrivacySettingsManagerService is available. For some reason,
      * occasionally it appears to be null. In this case it should be initialized again.
@@ -92,23 +91,27 @@ public class PrivacySettingsManager {
         return false;
     }
     
+    @Deprecated
     public void notification(String packageName, int uid, byte accessMode, String dataType, String output, PrivacySettings pSet) {
-        notification(packageName, accessMode, dataType, output, pSet);
+        notification(packageName, accessMode, dataType, output);
     }
     
+    @Deprecated
     public void notification(String packageName, byte accessMode, String dataType, String output, PrivacySettings pSet) {
-//        if (pSet != null && pSet.getNotificationSetting() == PrivacySettings.SETTING_NOTIFY_ON) {
-            try {
-                if (service != null) {
-                    service.notification(packageName, accessMode, dataType, output);
-                } else {
-                    Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
-                }            
-            } catch (RemoteException e) {
-                Log.e(TAG, "RemoteException in notification: ", e);
-            }
-//        }
+        notification(packageName, accessMode, dataType, output);
     }
+
+    public void notification(String packageName, byte accessMode, String dataType, String output) {
+          try {
+              if (service != null) {
+                  service.notification(packageName, accessMode, dataType, output);
+              } else {
+                  Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+              }            
+          } catch (RemoteException e) {
+              Log.e(TAG, "RemoteException in notification: ", e);
+          }
+  }
     
     public void registerObservers() {
         try {
@@ -139,7 +142,7 @@ public class PrivacySettingsManager {
             if (service != null) {
                 return service.purgeSettings();
             } else {
-                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+				Log.e(TAG, "purgeSettings - PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in purgeSettings: ", e);

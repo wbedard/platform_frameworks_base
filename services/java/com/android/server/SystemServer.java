@@ -1021,7 +1021,7 @@ class ServerThread extends Thread {
     // BEGIN privacy-added
     private void addPrivacyService(Context context) {
         try {
-            Log.i(TAG, "Privacy Service");
+            Slog.i(TAG, "Privacy Service");
             ServiceManager.addService("privacy", new PrivacySettingsManagerService(context));
         } catch (Throwable e) {
             Log.e(TAG, "Failure starting Privacy Service", e);
