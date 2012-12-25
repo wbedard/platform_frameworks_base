@@ -172,12 +172,7 @@ public final class PrivacyPersistenceAdapter {
 
 
             // upgrade if needed
-            sDbLock.readLock().lock();
-            try {
-                sDbVersion = getDbVersion();
-            } finally {
-                sDbLock.readLock().unlock();
-            }
+            sDbVersion = getDbVersion();
             
             if (sDbVersion < DATABASE_VERSION) {
                 upgradeDatabase();
@@ -287,28 +282,18 @@ public final class PrivacyPersistenceAdapter {
 
     
     private int getDbVersion() {
-        int version = -1;        
-
-        // updating the version is atomic, but we need to use a lock
-        // to make sure we don't try to get the version while the DB is being created or upgraded
-        sDbLock.readLock().lock();
-        try {
-            String versionString = getValue(SETTING_DB_VERSION);
-            if (versionString == null) {
-                Log.e(TAG, "PrivacyPersistenceAdapter:getDbVersion: getValue returned null; assuming version = 1");
-                version = 1;
-            } else {
-                try {
-                    version = Integer.parseInt(versionString);
-                } catch (Exception e) {
-                    Log.e(TAG, "PrivacyPersistenceAdapter:getDbVersion: failed to parse database version; returning 1");
-                    version = 1;
-                }
+        String versionString = getValue(SETTING_DB_VERSION);
+        if (versionString == null) {
+            Log.e(TAG, "PrivacyPersistenceAdapter:getDbVersion: getValue returned null; assuming version = 1");
+            return 1;
+        } else {
+            try {
+                return Integer.parseInt(versionString);
+            } catch (Exception e) {
+                Log.e(TAG, "PrivacyPersistenceAdapter:getDbVersion: failed to parse database version; returning 1");
+                return 1;
             }
-        } finally {
-            sDbLock.readLock().unlock();
         }
-        return version;
     }
 
     
