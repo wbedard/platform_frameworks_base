@@ -17,7 +17,9 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -44,6 +46,7 @@ public final class PrivacyPersistenceAdapter {
 
     // Used to lock the database during multi-statement operations to prevent
     // internally inconsistent data reads.
+    // Multiple locks could be used to improve efficiency (i.e. for different tables)
     private static ReadWriteLock dbLock = new ReentrantReadWriteLock();
 
     /**
@@ -153,132 +156,113 @@ public final class PrivacyPersistenceAdapter {
         // create the database and settings directory if we have write
         // permission and they do not exist
         if (new File("/data/system/").canWrite()) {
-            if (!new File(DATABASE_FILE).exists()) {
-                createDatabase();
-            }
-            if (!new File(SETTINGS_DIRECTORY).exists()) {
-                createSettingsDir();
+            if (!(new File(DATABASE_FILE).exists() && new File(SETTINGS_DIRECTORY).exists())) {
+                dbLock.writeLock().lock();
+                try {
+                    if (!new File(DATABASE_FILE).exists()) {
+                        createDatabase();
+                    }
+                    if (!new File(SETTINGS_DIRECTORY).exists()) {
+                        createSettingsDir();
+                    }
+                } finally {
+                    dbLock.writeLock().unlock();
+                }
             }
 
-            dbLock.readLock().lock();
 
             // upgrade if needed
-            sDbVersion = getDbVersion();
+            dbLock.readLock().lock();
+            try {
+                sDbVersion = getDbVersion();
+            } finally {
+                dbLock.readLock().unlock();
+            }
+            
             if (sDbVersion < DATABASE_VERSION) {
-                dbLock.readLock().unlock();
                 upgradeDatabase();
-            } else {
-                dbLock.readLock().unlock();
             }
         }
     }
 
+    
     private void upgradeDatabase() {
-        dbLock.writeLock().lock();
-        try {
-            if (sDbVersion < DATABASE_VERSION) {
-                Log.i(TAG, "upgradeDatabase - upgrading DB from version " + sDbVersion + " to "
-                        + DATABASE_VERSION);
+        if (sDbVersion < DATABASE_VERSION) {
+            Log.i(TAG, "PrivacyPersistenceAdapter:upgradeDatabase - upgrading DB from version " + sDbVersion + " to "
+                    + DATABASE_VERSION);
 
-                // backup current database file
-                File dbFile = new File(DATABASE_FILE);
-                File dbBackupFile = new File(DATABASE_FILE + ".bak");
-                // remove old backup
-                try {
-                    dbBackupFile.delete();
-                } catch (SecurityException e) {
-                    Log.w(TAG,
-                            "PrivacyPersistenceAdapter:upgradeDatabase: Could not remove old backup");
-                }
+            // need to track the state of the transaction, because may be in a nested transaction
+            boolean transactionOpen = false;
+            
+            SQLiteDatabase db = getWritableDatabase();
+            if (db != null && db.isOpen()) {
 
-                // create a database backup and check it was created
-                // (in case upgrade fails, in which case the DB is restored).
-                FileUtils.copyFile(dbFile, dbBackupFile);
-                if (System.currentTimeMillis() - dbBackupFile.lastModified() > 2000) {
-                    /*
-                     * TODO: Add exception handling, so the parent function
-                     * knows if the upgrade fails rather than just continuing on
-                     * a non-upgraded database
-                     */
-                    Log.e(TAG,
-                            "PrivacyPersistenceAdapter:upgradeDatabase: Could not create database backup. Aborting upgrade.");
-                } else {
-
-                    SQLiteDatabase db = getWritableDatabase();
-                    db.beginTransaction();
-
-                    switch (sDbVersion) {
-                    case 1:
-                    case 2:
-                    case 3:
+                switch (sDbVersion) {
+                case 1:
+                case 2:
+                case 3:
+                    try {
+                        db.beginTransaction();
+                        transactionOpen = true;
+                        db.execSQL("DROP TABLE IF EXISTS " + TABLE_VERSION + ";");
+                        db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
+                        db.execSQL(CREATE_TABLE_MAP);
+                        db.execSQL(INSERT_VERSION);
+                        db.execSQL(INSERT_ENABLED);
+                        db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
+    
+                        
+                        // We can rely on the transaction to protect the database from
+                        // issues due to reads while writing, but need to use
+                        // a lock to avoid problems on the file system part
+                        dbLock.writeLock().lock();
                         try {
-                            if (db != null && db.isOpen()) {
-                                db.execSQL("DROP TABLE IF EXISTS " + TABLE_VERSION + ";");
-                                db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
-                                db.execSQL(CREATE_TABLE_MAP);
-                                db.execSQL(INSERT_VERSION);
-                                db.execSQL(INSERT_ENABLED);
-                                db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
-
-                                // remove uid dirs from the settings directory
-                                File settingsDir = new File(SETTINGS_DIRECTORY);
-                                for (File packageDir : settingsDir.listFiles()) {
-                                    for (File uidDir : packageDir.listFiles()) {
-                                        if (uidDir.isDirectory()) {
-                                            File[] settingsFiles = uidDir.listFiles();
-                                            // copy the first found (most likely
-                                            // the
-                                            // only
-                                            // one) one level up
-                                            if (settingsFiles[0] != null) {
-                                                File newPath = new File(packageDir + "/"
-                                                        + settingsFiles[0].getName());
-                                                newPath.delete();
-                                                settingsFiles[0].renameTo(newPath);
-                                                deleteRecursive(uidDir);
-                                            }
+                            purgeSettings();
+                            // remove uid dirs from the settings directory
+                            File settingsDir = new File(SETTINGS_DIRECTORY);
+                            for (File packageDir : settingsDir.listFiles()) {
+                                for (File uidDir : packageDir.listFiles()) {
+                                    if (uidDir.isDirectory()) {
+                                        File[] settingsFiles = uidDir.listFiles();
+                                        // copy the first found (most likely
+                                        // the only one) one level up
+                                        if (settingsFiles[0] != null) {
+                                            File newPath = new File(packageDir + "/"
+                                                    + settingsFiles[0].getName());
+                                            newPath.delete();
+                                            settingsFiles[0].renameTo(newPath);
+                                            deleteRecursive(uidDir);
                                         }
                                     }
                                 }
-
-                                db.setTransactionSuccessful();
-                                sDbVersion = DATABASE_VERSION;
                             }
+                            
+                            db.setTransactionSuccessful();
+                            db.endTransaction();
+                            transactionOpen = false;
+                            sDbVersion = DATABASE_VERSION;
                         } catch (Exception e) {
-                            if (db != null && db.isOpen()) {
-                                db.endTransaction();
-                                db.close();
-                            }
-                            Log.w(TAG,
-                                    "upgradeDatabase - could not upgrade DB; will restore backup",
-                                    e);
-                            FileUtils.copyFile(dbBackupFile, dbFile);
-                            dbBackupFile.delete();
+                            Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Exception occurred while making filesystem changes", e);
+                        } finally {
+                            dbLock.writeLock().unlock();
                         }
-
-                        break;
-
-                    case 4:
-                        // most current version, do nothing
-                        Log.w(TAG, "upgradeDatabase - trying to upgrade most current DB version");
-                        break;
+                    } catch (SQLException e) {
+                        Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Exception occurred performing database upgrade", e);
+                    } finally {
+                        db.endTransaction();
                     }
+                    break;
+                    
+                case 4:
+                    // most current version, do nothing
+                    Log.i(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Database is already at the most recent version");
+                    break;
                 }
-                if (db != null && db.isOpen()) {
-                    db.endTransaction();
-                    db.close();
-                } else {
-                    Log.e(TAG,
-                            "upgradeDatabase - database is null or closed; cant call endTransaction()");
-                }
-
-                purgeSettings();
             }
-        } finally {
-            dbLock.writeLock().unlock();
         }
     }
 
+    
     private int getDbVersion() {
         int version = -1;
         // check if the table "map" exists; if it doesn't -> return version 1
@@ -289,52 +273,43 @@ public final class PrivacyPersistenceAdapter {
         SQLiteDatabase db = getReadableDatabase();
         Cursor c = null;
 
+        // updating the version is atomic, but we need to use a lock
+        // to make sure we don't try to get the version while the DB is being created or upgraded
+        dbLock.readLock().lock();
         try {
-            c = rawQuery(db, "SELECT name FROM sqlite_master WHERE type='table' AND name='"
-                    + TABLE_MAP + "';");
-            if (c != null) {
-                if (c.getCount() == 0) {
-                    // table map does not exist
+            String versionString = getValue(SETTING_DB_VERSION);
+            if (versionString == null) {
+                version = 1;
+            } else {
+                try {
+                    version = Integer.parseInt(versionString);
+                } catch (Exception e) {
+                    Log.e(TAG, "getDbVersion - failed to parse database version; returning 1");
                     version = 1;
                 }
-            } else {
-                Log.e(TAG, "getDbVersion - failed to check if table map exists (cursor is null)");
             }
-        } catch (Exception e) {
-            Log.e(TAG, "getDbVersion - failed to check if table map exists (exception)");
         } finally {
-            c.close();
-            closeIdleDatabase();
+            dbLock.readLock().lock();
         }
-        if (version == 1)
-            return version;
-
-        String versionString = getValue(SETTING_DB_VERSION);
-        if (versionString == null)
-            return 1;
-
-        int versionNum;
-        try {
-            versionNum = Integer.parseInt(versionString);
-        } catch (Exception e) {
-            Log.e(TAG, "getDbVersion - failed to parse database version; returning 1");
-            return 1;
-        }
-
-        return versionNum;
+        closeIdleDatabase();
+        return version;
     }
 
+    
     public String getValue(String name) {
 
         synchronized (readingThreads) {
             readingThreads++;
         }
 
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db;
         Cursor c;
         String output = null;
 
+        dbLock.readLock().lock();
         try {
+            db = getReadableDatabase();
+            
             c = query(db, TABLE_MAP, new String[] { "value" }, "name=?", new String[] { name },
                     null, null, null, null);
             if (c != null && c.getCount() > 0 && c.moveToFirst()) {
@@ -345,23 +320,39 @@ public final class PrivacyPersistenceAdapter {
             }
         } catch (Exception e) {
             Log.w(TAG, "getValue - could not get value for name: " + name, e);
+            dbLock.readLock().unlock();
         }
 
         closeIdleDatabase();
         return output;
     }
-
-    public synchronized boolean setValue(String name, String value) {
+    
+    public boolean setValue(String name, String value) {
         Log.e(TAG, "setValue - name " + name + " value " + value);
         ContentValues values = new ContentValues();
         values.put("name", name);
         values.put("value", value);
-        SQLiteDatabase db = getWritableDatabase();
-        boolean success = db.replace(TABLE_MAP, null, values) != -1;
-        closeIdleDatabase();
+
+        synchronized (readingThreads) {
+            readingThreads++;
+        }
+        
+        boolean success = false;
+
+        // updating the version is atomic, but we need to use a lock
+        // to make sure we don't try to get/update the version while the DB is being created or upgraded
+        dbLock.writeLock().lock();
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+            success = db.replace(TABLE_MAP, null, values) != -1;
+        } finally {
+            dbLock.writeLock().unlock();
+            closeIdleDatabase();
+        }
+        
         return success;
     }
-
+    
     /**
      * Retrieve privacy settings for a single package
      * 
@@ -444,9 +435,6 @@ public final class PrivacyPersistenceAdapter {
             }
         } catch (Exception e) {
             Log.e(TAG, "getSettings - failed to get settings for package: " + packageName, e);
-            e.printStackTrace();
-            if (cursor != null)
-                cursor.close();
         } finally {
             if (cursor != null)
                 cursor.close();
@@ -468,6 +456,10 @@ public final class PrivacyPersistenceAdapter {
      */
     public boolean saveSettings(PrivacySettings s) {
         boolean result = true;
+        
+        boolean transactionOpen = false;
+        boolean lockOpen = false;
+        
         String packageName = s.getPackageName();
 
         if (packageName == null || packageName.isEmpty()) {
@@ -535,17 +527,22 @@ public final class PrivacyPersistenceAdapter {
         synchronized (readingThreads) {
             readingThreads++;
         }
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction(); // make sure this ends up in a consistent state
-                               // (DB and plain text files)
+        
+        SQLiteDatabase db = null;
         Cursor c = null;
-        dbLock.writeLock().lock();
+        
         try {
+            db = getWritableDatabase();
+            
+            // don't actually need to 'lock' until quite late, because
+            // the transaction should prevent this interfering with queries
+            db.beginTransaction();
+            transactionOpen = true;
+            
             // save settings to the DB
-            // Log.d(TAG, "saveSettings - checking if entry exists already");
             Integer id = s.get_id();
+            
             if (id != null) { // existing entry -> update
-                // Log.d(TAG, "saveSettings - updating existing entry");
                 if (db.update(TABLE_SETTINGS, values, "_id=?", new String[] { id.toString() }) < 1) {
                     throw new Exception("saveSettings - failed to update database entry");
                 }
@@ -629,21 +626,29 @@ public final class PrivacyPersistenceAdapter {
                 }
             }
 
+            dbLock.writeLock().lock();
+            lockOpen = true;
             // save settings to plain text file (for access from core libraries)
             result = writeExternalSettings("systemLogsSetting", packageName, s);
             result = writeExternalSettings("ipTableProtectSetting", packageName, s);
 
             // mark DB transaction successful (commit the changes)
             db.setTransactionSuccessful();
-            // Log.d(TAG, "saveSettings - completing transaction");
+            db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
+            transactionOpen = false;
         } catch (Exception e) {
             result = false;
-            // Log.d(TAG, "saveSettings - could not save settings", e);
         } finally {
             if (c != null)
                 c.close();
-            dbLock.writeLock().unlock();
-            db.endTransaction();
+            if (transactionOpen) {
+                db.endTransaction();
+                transactionOpen = false;
+            }
+            if (lockOpen) {
+                dbLock.writeLock().unlock();
+                lockOpen = false;
+            }
             closeIdleDatabase();
         }
 
@@ -651,7 +656,7 @@ public final class PrivacyPersistenceAdapter {
     }
 
     /**
-     * This method creates external settings files for access from core librarys
+     * This method creates external settings files for access from core libraries
      * 
      * @param settingsName
      *            field name from database
@@ -669,6 +674,9 @@ public final class PrivacyPersistenceAdapter {
         File settingsPackageDir = new File("/data/system/privacy/" + packageName + "/");
         File systemLogsSettingFile = new File("/data/system/privacy/" + packageName + "/" + "/"
                 + settingsName);
+        boolean result = false;
+        
+        dbLock.writeLock().lock();
         try {
             settingsPackageDir.mkdirs();
             settingsPackageDir.setReadable(true, false);
@@ -687,11 +695,16 @@ public final class PrivacyPersistenceAdapter {
                 writer.append(s.getIpTableProtectSetting() + "");
             writer.flush();
             writer.close();
-            return true;
+            result = true;
         } catch (IOException e) {
             // jump to catch block to avoid marking transaction as successful
+            dbLock.readLock().unlock();
             throw new Exception("saveSettings - could not write settings to file", e);
+        } finally {
+            dbLock.readLock().unlock();
         }
+        
+        return true;
     }
 
     /**
@@ -813,73 +826,71 @@ public final class PrivacyPersistenceAdapter {
      */
     public boolean purgeSettings() {
         boolean result = true;
-        // Log.d(TAG, "purgeSettings - begin purging settings");
+        
         // get installed apps
-        List<String> apps = new ArrayList<String>();
+        Set<String> apps = new HashSet<String>();
         PackageManager pMan = context.getPackageManager();
-        List<ApplicationInfo> installedApps = pMan
-                .getInstalledApplications(PackageManager.GET_META_DATA);
+        List<ApplicationInfo> installedApps = pMan.getInstalledApplications(0);
         for (ApplicationInfo appInfo : installedApps) {
             apps.add(appInfo.packageName);
         }
 
         dbLock.writeLock().lock();
-        // Log.d(TAG, "purgeSettings - purging directories");
-        // delete obsolete settings directories
-        File settingsDir = new File(SETTINGS_DIRECTORY);
-        for (File packageDir : settingsDir.listFiles()) {
-            String packageName = packageDir.getName();
-            // Log.d(TAG, "purgeSettings - checking package directory " +
-            // packageName);
 
-            if (!apps.contains(packageName)) { // remove package dir if no such
-                                               // app installed
-                // Log.d(TAG, "purgeSettings - deleting " + packageName);
-                deleteRecursive(packageDir);
-            }
-        }
-
-        // Log.d(TAG, "purgeSettings - purging database");
-        // delete obsolete entries from DB and update outdated entries
-        synchronized (readingThreads) {
-            readingThreads++;
-        }
-        SQLiteDatabase db = getReadableDatabase();
-        Cursor c = null;
+        SQLiteDatabase db = null;
+        
         try {
-            c = query(db, TABLE_SETTINGS, new String[] { "packageName" }, null, null, null, null,
-                    null, null);
-            // Log.d(TAG, "purgeSettings - found " + c.getCount() +
-            // " entries in the DB");
-            List<String> appsInDb = new ArrayList<String>();
-            while (c.moveToNext()) {
-                String packageName = c.getString(0);
-                if (!apps.contains(packageName)) {
-                    deleteSettings(packageName);
-                } else {
-                    if (appsInDb.contains(packageName)) { // if duplicate entry,
-                                                          // remove all
-                                                          // duplicates and
-                                                          // keep only one
-                        PrivacySettings pSetTmp = getSettings(packageName);
-                        deleteSettings(packageName);
-                        saveSettings(pSetTmp);
-                    } else {
-                        appsInDb.add(packageName);
-                    }
+            // delete obsolete settings directories
+            File settingsDir = new File(SETTINGS_DIRECTORY);
+            for (File packageDir : settingsDir.listFiles()) {
+                String packageName = packageDir.getName();
+                if (!apps.contains(packageName)) { // remove package dir if no such
+                    // app installed
+                    deleteRecursive(packageDir);
                 }
             }
-        } catch (Exception e) {
-            Log.e(TAG, "purgeSettings - purging DB failed", e);
-            result = false;
+
+            synchronized (readingThreads) {
+                readingThreads++;
+            }
+
+            // delete obsolete entries from DB and update outdated entries
+            db = getWritableDatabase();
+            db.beginTransaction();
+
+            Cursor cursor = null;
+            try {
+                cursor = query(db, TABLE_SETTINGS, new String[] { "packageName" }, null, null, null, null,
+                        null, null);
+                if (cursor != null && cursor.getCount() > 0 && cursor.moveToFirst()) {
+                    do {
+                        String packageName = cursor.getString(0);
+                        if (!apps.contains(packageName)) {
+                            db.delete(TABLE_SETTINGS, "packageName = ?", new String [] { packageName });
+                        }
+                    } while (cursor.moveToNext());
+                }
+
+                db.setTransactionSuccessful();
+                db.endTransaction();
+            } catch (Exception e) {
+                Log.e(TAG, "PrivacyPersistenceAdapter:purgeSettings - purging DB failed", e);
+                result = false;
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+                closeIdleDatabase();
+            }
+            return result;
         } finally {
-            if (c != null)
-                c.close();
             dbLock.writeLock().unlock();
-            closeIdleDatabase();
+            if (db != null && db.inTransaction()) {
+                db.endTransaction();
+            }
         }
-        return result;
     }
+    
 
     private void deleteRecursive(File fileOrDirectory) {
         if (fileOrDirectory.isDirectory()) {
@@ -889,7 +900,7 @@ public final class PrivacyPersistenceAdapter {
         fileOrDirectory.delete();
     }
 
-    private synchronized void createDatabase() {
+    private void createDatabase() {
         Log.i(TAG, "createDatabase - creating privacy database file");
         try {
             SQLiteDatabase db = SQLiteDatabase.openDatabase(DATABASE_FILE, null,
@@ -909,7 +920,7 @@ public final class PrivacyPersistenceAdapter {
         }
     }
 
-    private synchronized void createSettingsDir() {
+    private void createSettingsDir() {
         // create settings directory (for settings accessed from core libraries)
         File settingsDir = new File("/data/system/privacy/");
         settingsDir.mkdirs();
@@ -928,10 +939,6 @@ public final class PrivacyPersistenceAdapter {
     }
 
     private synchronized SQLiteDatabase getWritableDatabase() {
-        // create the database if it does not exist
-        if (!new File(DATABASE_FILE).exists())
-            createDatabase();
-
         if (db != null && db.isOpen() && !db.isReadOnly()) {
             return db;
         }
