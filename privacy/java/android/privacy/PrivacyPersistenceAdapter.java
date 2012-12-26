@@ -35,6 +35,7 @@ public final class PrivacyPersistenceAdapter {
     private static final int RETRY_QUERY_COUNT = 5;
     private static final String DATABASE_FILE = "/data/system/privacy.db";
     private static final int DATABASE_VERSION = 4;
+    private static final boolean LOG_LOCKING = false;
     public static final int DUMMY_UID = -1;
 
     /**
@@ -157,9 +158,9 @@ public final class PrivacyPersistenceAdapter {
         // permission and they do not exist
         if (new File("/data/system/").canWrite()) { 
             if (!(new File(DATABASE_FILE).exists() && new File(SETTINGS_DIRECTORY).exists())) {
-                Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (pre)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (pre)lock");
                 sDbLock.writeLock().lock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (post)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (post)lock");
                 try {
                     if (!new File(DATABASE_FILE).exists()) {
                         createDatabase();
@@ -168,9 +169,9 @@ public final class PrivacyPersistenceAdapter {
                         createSettingsDir();
                     }
                 } finally {
-                    Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (pre)unlock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (pre)unlock");
                     sDbLock.writeLock().unlock();
-                    Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (post)unlock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:constructor: WriteLock: (post)unlock");
                 }
             }
 
@@ -207,9 +208,9 @@ public final class PrivacyPersistenceAdapter {
 
                     db = getDatabase();
                     if (db != null && db.isOpen()) {                        
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)begin");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)begin");
                         db.beginTransaction();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)begin");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)begin");
                         transactionOpen = true;
                         
                         db.execSQL("DROP TABLE IF EXISTS " + TABLE_VERSION + ";");
@@ -222,9 +223,9 @@ public final class PrivacyPersistenceAdapter {
                         // We can rely on the transaction to protect the database from
                         // issues due to reads while writing, but need to use
                         // a lock to avoid problems on the file system part
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)lock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)lock");
                         sDbLock.writeLock().lock();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)lock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)lock");
                         lockOpen = true;
 
                         // check the db version again to make sure that another thread has not already done the upgrade
@@ -257,14 +258,14 @@ public final class PrivacyPersistenceAdapter {
 
                                 db.setTransactionSuccessful();
                                 
-                                Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
                                 db.endTransaction();
-                                Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
                                 transactionOpen = false;
                                 sDbVersion = DATABASE_VERSION;
-                                Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
                                 sDbLock.writeLock().unlock();
-                                Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
                                 lockOpen = false;
                             } catch (Exception e) {
                                 Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Exception occurred while making filesystem changes", e);
@@ -278,15 +279,15 @@ public final class PrivacyPersistenceAdapter {
                     Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: SQLException occurred performing database upgrade", e);
                 } finally {
                     if (transactionOpen) {
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
                         db.endTransaction();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
                         transactionOpen = false;
                     }
                     if (lockOpen) {
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
                         sDbLock.writeLock().unlock();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
                         lockOpen = false;
                     }
                     closeIdleDatabase();
@@ -333,9 +334,9 @@ public final class PrivacyPersistenceAdapter {
                 return null;
             }
 
-            Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (pre)lock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (pre)lock");
             sDbLock.readLock().lock();
-            Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (post)lock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (post)lock");
             try {
 
                 c = query(db, TABLE_MAP, new String[] { "value" }, "name=?", new String[] { name },
@@ -350,9 +351,9 @@ public final class PrivacyPersistenceAdapter {
                 Log.e(TAG, "PrivacyPersistenceAdapter:getValue: Exception occurred while getting value for name: " + name, e);
             } finally {
                 
-                Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)unlock");
                 sDbLock.readLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
             }
 
         } finally {
@@ -383,15 +384,15 @@ public final class PrivacyPersistenceAdapter {
             
             // updating the version is atomic, but we need to use a lock
             // to make sure we don't try to get/update the version while the DB is being created or upgraded
-            Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (pre)lock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (pre)lock");
             sDbLock.writeLock().lock();
-            Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (post)lock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (post)lock");
             try {
                 success = db.replace(TABLE_MAP, null, values) != -1;
             } finally {
-                Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:setValue: WriteLock: (post)unlock");
             }
         } finally {
             closeIdleDatabase();
@@ -431,9 +432,9 @@ public final class PrivacyPersistenceAdapter {
 
         Cursor cursor = null;
 
-        Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)lock");
+        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)lock");
         sDbLock.readLock().lock();
-        Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)lock");
+        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)lock");
         try {
             cursor = query(db, TABLE_SETTINGS, DATABASE_FIELDS, "packageName=?",
                     new String[] { packageName }, null, null, null, null);
@@ -485,9 +486,9 @@ public final class PrivacyPersistenceAdapter {
         } finally {
             if (cursor != null)
                 cursor.close();
-            Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)unlock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)unlock");
             sDbLock.readLock().unlock();
-            Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
             closeIdleDatabase();
         }
 
@@ -586,9 +587,9 @@ public final class PrivacyPersistenceAdapter {
                 try {
                     // don't actually need to 'lock' until quite late, because
                     // the transaction should prevent this interfering with queries
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)begin");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)begin");
                     db.beginTransaction();
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)begin");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)begin");
                     transactionOpen = true;
 
                     // save settings to the DB
@@ -677,9 +678,9 @@ public final class PrivacyPersistenceAdapter {
                         }
                     }
 
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)lock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)lock");
                     sDbLock.writeLock().lock();
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)lock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)lock");
                     lockOpen = true;
                     // save settings to plain text file (for access from core libraries)
                     if (!writeExternalSettings("systemLogsSetting", packageName, s)) {
@@ -691,13 +692,13 @@ public final class PrivacyPersistenceAdapter {
 
                     // mark DB transaction successful (commit the changes)
                     db.setTransactionSuccessful();
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
                     db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
                     transactionOpen = false;
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
                     sDbLock.writeLock().unlock();
-                    Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
                     lockOpen = false;
                     result = true;
                 } finally {
@@ -710,15 +711,15 @@ public final class PrivacyPersistenceAdapter {
                     // prior to the lock being released, despite the lock being started after the
                     // transaction
                     if (transactionOpen) {
-                        Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
                         db.endTransaction();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
                         transactionOpen = false;
                     }
                     if (lockOpen) {
-                        Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
                         sDbLock.writeLock().unlock();
-                        Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
                         lockOpen = false;
                     }
                 }
@@ -753,9 +754,9 @@ public final class PrivacyPersistenceAdapter {
                 + settingsName);
         boolean result = false;
         
-        Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (pre)lock");
+        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (pre)lock");
         sDbLock.writeLock().lock();
-        Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (post)lock");
+        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (post)lock");
         try {
             settingsPackageDir.mkdirs();
             settingsPackageDir.setReadable(true, false);
@@ -779,9 +780,9 @@ public final class PrivacyPersistenceAdapter {
             // jump to catch block to avoid marking transaction as successful
             throw new Exception("saveSettings - could not write settings to file", e);
         } finally {
-            Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (pre)unlock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (pre)unlock");
             sDbLock.writeLock().unlock();
-            Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (post)unlock");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:writeExternalSettings: WriteLock: (post)unlock");
         }
         
         return true;
@@ -806,9 +807,9 @@ public final class PrivacyPersistenceAdapter {
 
             db = getDatabase();
             
-            Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)begin");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)begin");
             db.beginTransaction();
-            Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)begin");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)begin");
             // make sure this ends up in a consistent state
             transactionOpen = true;
             try {
@@ -833,9 +834,9 @@ public final class PrivacyPersistenceAdapter {
                     Log.e(TAG, "deleteSettings - database entry for " + packageName + " not found");
                 }
 
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)lock");
                 sDbLock.writeLock().lock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)lock");
                 lockOpen = true;
                 // delete settings from plain text file (for access from core
                 // libraries)
@@ -850,13 +851,13 @@ public final class PrivacyPersistenceAdapter {
                     settingsPackageDir.delete();
 
                 db.setTransactionSuccessful();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
                 db.endTransaction();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
                 transactionOpen = false;
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
                 lockOpen = false;
             } catch (Exception e) {
                 result = false;
@@ -871,15 +872,15 @@ public final class PrivacyPersistenceAdapter {
             // prior to the lock being released, despite the lock being started after the
             // transaction
             if (transactionOpen) {
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
                 db.endTransaction();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
                 transactionOpen = false;
             }
             if (lockOpen) {
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
                 lockOpen = false;
             }
             closeIdleDatabase();            
