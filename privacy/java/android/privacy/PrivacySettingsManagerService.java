@@ -3,6 +3,7 @@ package android.privacy;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
+import android.os.RemoteException;
 import android.util.Log;
 
 import java.io.File;
@@ -10,78 +11,82 @@ import java.io.File;
 /**
  * PrivacySettingsManager's counterpart running in the system process, which
  * allows write access to /data/
- * @author Svyatoslav Hresyk
- * TODO: add selective contact access management API
- * {@hide}
+ * 
+ * @author Svyatoslav Hresyk TODO: add selective contact access management API
+ * 
+ *         {@hide}
  */
-public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub {
+public final class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub {
 
     private static final String TAG = "PrivacySettingsManagerService";
-    
     private static final String WRITE_PRIVACY_SETTINGS = "android.privacy.WRITE_PRIVACY_SETTINGS";
-
     private static final String READ_PRIVACY_SETTINGS = "android.privacy.READ_PRIVACY_SETTINGS";
 
     private PrivacyPersistenceAdapter persistenceAdapter;
-
+    
     private Context context;
-    
+
     public static PrivacyFileObserver obs;
-    
+
     private boolean enabled;
     private boolean notificationsEnabled;
     private boolean bootCompleted;
-    
+
     private static final double VERSION = 1.51;
-    
+
     /**
      * @hide - this should be instantiated through Context.getSystemService
      * @param context
      */
     public PrivacySettingsManagerService(Context context) {
-        Log.i(TAG, "PrivacySettingsManagerService - initializing for package: " + context.getPackageName() + 
-                " UID: " + Binder.getCallingUid());
+        Log.i(TAG,
+                "PrivacySettingsManagerService - initializing for package: "
+                        + context.getPackageName() + " UID: " + Binder.getCallingUid());
         this.context = context;
-        
+
         persistenceAdapter = new PrivacyPersistenceAdapter(context);
         obs = new PrivacyFileObserver("/data/system/privacy", this);
-        
-        enabled = persistenceAdapter.getValue(PrivacyPersistenceAdapter.SETTING_ENABLED).equals(PrivacyPersistenceAdapter.VALUE_TRUE);
-        notificationsEnabled = persistenceAdapter.getValue(PrivacyPersistenceAdapter.SETTING_NOTIFICATIONS_ENABLED).equals(PrivacyPersistenceAdapter.VALUE_TRUE);
+
+        enabled = persistenceAdapter.getValue(PrivacyPersistenceAdapter.SETTING_ENABLED).equals(
+                PrivacyPersistenceAdapter.VALUE_TRUE);
+        notificationsEnabled = persistenceAdapter.getValue(
+                PrivacyPersistenceAdapter.SETTING_NOTIFICATIONS_ENABLED).equals(
+                PrivacyPersistenceAdapter.VALUE_TRUE);
         bootCompleted = false;
     }
-    
+
     public PrivacySettings getSettings(String packageName) {
-//        Log.d(TAG, "getSettings - " + packageName);
-          if (enabled || context.getPackageName().equals("com.privacy.pdroid") || context.getPackageName().equals("com.privacy.pdroid.Addon") 
-	      || context.getPackageName().equals("com.android.privacy.pdroid.extension"))  //we have to add our addon package here, to get real settings
-//	  if (Binder.getCallingUid() != 1000)
-//            	context.enforceCallingPermission(READ_PRIVACY_SETTINGS, "Requires READ_PRIVACY_SETTINGS");
-          return persistenceAdapter.getSettings(packageName, false);
-          else return null;
+        // Log.d(TAG, "getSettings - " + packageName);
+        if (enabled || context.getPackageName().equals("com.privacy.pdroid")
+                || context.getPackageName().equals("com.privacy.pdroid.Addon")
+                || context.getPackageName().equals("com.android.privacy.pdroid.extension"))
+            // we have to add our addon package here, to get real settings
+            return persistenceAdapter.getSettings(packageName);
+        else
+            return null;
     }
 
-    public boolean saveSettings(PrivacySettings settings) {
-        Log.d(TAG, "saveSettings - checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
-        // check permission if not being called by the system process
-	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){ //enforce permission, because declaring in manifest doesn't work well -> let my addon package save settings
-        	if (Binder.getCallingUid() != 1000)
-            		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-	//}
+    public boolean saveSettings(PrivacySettings settings) throws RemoteException {
+        Log.d(TAG, "saveSettings - checking if caller (UID: " + Binder.getCallingUid()
+                + ") has sufficient permissions");
+        // Why are we letting the system delete package settings??
+        if (Binder.getCallingUid() != 1000) {
+            checkCallerCanWriteOrThrow();
+        }
+        
         Log.d(TAG, "saveSettings - " + settings);
         boolean result = persistenceAdapter.saveSettings(settings);
-        if (result == true) obs.addObserver(settings.getPackageName());
+        if (result == true)
+            obs.addObserver(settings.getPackageName());
         return result;
     }
-    
-    public boolean deleteSettings(String packageName) {
-//        Log.d(TAG, "deleteSettings - " + packageName + " UID: " + uid + " " +
-//        		"checking if caller (UID: " + Binder.getCallingUid() + ") has sufficient permissions");
-        // check permission if not being called by the system process
-	//if(!context.getPackageName().equals("com.privacy.pdroid.Addon")){//enforce permission, because declaring in manifest doesn't work well -> let my addon package delete settings
-        	if (Binder.getCallingUid() != 1000)
-            		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");
-	//}
+
+    public boolean deleteSettings(String packageName) throws RemoteException {
+        // Why are we letting the system delete package settings??
+        if (Binder.getCallingUid() != 1000) {
+            checkCallerCanWriteOrThrow();
+        }
+
         boolean result = persistenceAdapter.deleteSettings(packageName);
         // update observer if directory exists
         String observePath = PrivacyPersistenceAdapter.SETTINGS_DIRECTORY + "/" + packageName;
@@ -92,14 +97,15 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
         }
         return result;
     }
-    
+
     public double getVersion() {
         return VERSION;
     }
-    
-    public void notification(final String packageName, final byte accessMode, final String dataType, final String output) {
+
+    public void notification(final String packageName, final byte accessMode,
+            final String dataType, final String output) {
         if (bootCompleted && notificationsEnabled) {
-	    Intent intent = new Intent();
+            Intent intent = new Intent();
             intent.setAction(PrivacySettingsManager.ACTION_PRIVACY_NOTIFICATION);
             intent.putExtra("packageName", packageName);
             intent.putExtra("uid", PrivacyPersistenceAdapter.DUMMY_UID);
@@ -109,28 +115,31 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
             context.sendBroadcast(intent);
         }
     }
-    
-    public void registerObservers() {
-        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");        
+
+    public void registerObservers() throws RemoteException {
+        checkCallerCanWriteOrThrow();
         obs = new PrivacyFileObserver("/data/system/privacy", this);
     }
-    
-    public void addObserver(String packageName) {
-        context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS, "Requires WRITE_PRIVACY_SETTINGS");        
+
+    public void addObserver(String packageName) throws RemoteException {
+        checkCallerCanWriteOrThrow();
         obs.addObserver(packageName);
     }
-    
+
     public boolean purgeSettings() {
         return persistenceAdapter.purgeSettings();
     }
-    
+
     public void setBootCompleted() {
         bootCompleted = true;
     }
-    
-    public boolean setNotificationsEnabled(boolean enable) {
-        String value = enable ? PrivacyPersistenceAdapter.VALUE_TRUE : PrivacyPersistenceAdapter.VALUE_FALSE;
-        if (persistenceAdapter.setValue(PrivacyPersistenceAdapter.SETTING_NOTIFICATIONS_ENABLED, value)) {
+
+    public boolean setNotificationsEnabled(boolean enable) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        String value = enable ? PrivacyPersistenceAdapter.VALUE_TRUE
+                : PrivacyPersistenceAdapter.VALUE_FALSE;
+        if (persistenceAdapter.setValue(PrivacyPersistenceAdapter.SETTING_NOTIFICATIONS_ENABLED,
+                value)) {
             this.notificationsEnabled = true;
             this.bootCompleted = true;
             return true;
@@ -138,9 +147,18 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
             return false;
         }
     }
-    
-    public boolean setEnabled(boolean enable) {
-        String value = enable ? PrivacyPersistenceAdapter.VALUE_TRUE : PrivacyPersistenceAdapter.VALUE_FALSE;
+
+    /**
+     * Enables or disables PDroid protection. If 'enabled' = true, PDroid will
+     * return valid settings. Otherwise it will return 'null', which allows all.
+     * Setting to 'enabled' has immediate effects; setting to 'disabled' has no effect until next reboot.
+     * @param newIsEnabled 
+     * @return new 'enabled' state.
+     */
+    public boolean setEnabled(boolean newIsEnabled) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        String value = newIsEnabled ? PrivacyPersistenceAdapter.VALUE_TRUE
+                : PrivacyPersistenceAdapter.VALUE_FALSE;
         if (persistenceAdapter.setValue(PrivacyPersistenceAdapter.SETTING_ENABLED, value)) {
             this.enabled = true;
             return true;
@@ -148,4 +166,59 @@ public class PrivacySettingsManagerService extends IPrivacySettingsManager.Stub 
             return false;
         }
     }
+    
+        /**
+     * Check the caller of the service has privileges to write to it
+	 * Throw an exception if not. 
+	 */
+	private void checkCallerCanWriteOrThrow() throws RemoteException {
+		context.enforceCallingPermission(WRITE_PRIVACY_SETTINGS,
+				"Requires WRITE_PRIVACY_SETTINGS");
+		//for future:
+		// if not allowed then throw
+		//			throw new SecurityException("Attempted to write without sufficient priviliges");
+
+	}
+	
+	/**
+	 * Check that the caller of the service has privileges to write to it.
+	 * @return true if caller can write, false otherwise.
+	 */
+	private boolean checkCallerCanWriteSettings() throws RemoteException {
+		try {
+			checkCallerCanWriteOrThrow();
+			return true;
+		} catch (SecurityException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Check the caller of the service has privileges to read from it
+	 * Throw an exception if not. 
+	 */
+	private void checkCallerCanReadOrThrow() {
+		if (Binder.getCallingUid() == 1000) {
+			return;
+		}
+		context.enforceCallingPermission(READ_PRIVACY_SETTINGS,
+				"Requires READ_PRIVACY_SETTINGS");
+		//for future:
+		// if not allowed then throw
+		//			throw new SecurityException("Attempted to read without sufficient priviliges");
+
+	}
+	
+	/**
+	 * Check that the caller of the service has privileges to read from it.
+	 * @return true if caller can read, false otherwise.
+	 */
+	private boolean checkCallerCanReadSettings() {
+		try {
+			checkCallerCanReadOrThrow();
+			return true;
+		} catch (SecurityException e) {
+			return false;
+		}
+	}
 }
