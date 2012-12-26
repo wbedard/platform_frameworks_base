@@ -974,9 +974,9 @@ public final class PrivacyPersistenceAdapter {
                 return false;
             }
             
-            Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)begin");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)begin");
             db.beginTransaction();
-            Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)begin");
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)begin");
             transactionOpen = true;
 
             Cursor cursor = null;
@@ -992,9 +992,9 @@ public final class PrivacyPersistenceAdapter {
                     } while (cursor.moveToNext());
                 }
 
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)lock");
                 sDbLock.writeLock().lock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)lock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)lock");
                 lockOpen = true;
                 // delete obsolete settings directories
                 File settingsDir = new File(SETTINGS_DIRECTORY);
@@ -1007,13 +1007,13 @@ public final class PrivacyPersistenceAdapter {
                 }
                 
                 db.setTransactionSuccessful();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
                 db.endTransaction();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
                 transactionOpen = false;
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
                 lockOpen = false;
             } catch (Exception e) {
                 Log.e(TAG, "PrivacyPersistenceAdapter:purgeSettings - purging DB failed", e);
@@ -1026,14 +1026,14 @@ public final class PrivacyPersistenceAdapter {
             return result;
         } finally {
             if (transactionOpen) {
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
                 db.endTransaction();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
             }
             if (lockOpen) {
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
-                Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
             }
             closeIdleDatabase();
         }
