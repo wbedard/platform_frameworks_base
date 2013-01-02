@@ -191,10 +191,6 @@ public final class PrivacyPersistenceAdapter {
             Log.i(TAG, "PrivacyPersistenceAdapter:upgradeDatabase - upgrading DB from version " + sDbVersion + " to "
                     + DATABASE_VERSION);
 
-            // need to track the state of the transaction, because may be in a nested transaction
-            boolean transactionOpen = false;
-            boolean lockOpen = false;
-
             SQLiteDatabase db = null;
             
             switch (sDbVersion) {
@@ -207,89 +203,72 @@ public final class PrivacyPersistenceAdapter {
                     }
 
                     db = getDatabase();
-                    if (db != null && db.isOpen()) {                        
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)begin");
-                        db.beginTransaction();
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)begin");
-                        transactionOpen = true;
-                        
-                        db.execSQL("DROP TABLE IF EXISTS " + TABLE_VERSION + ";");
-                        db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
-                        db.execSQL(CREATE_TABLE_MAP);
-                        db.execSQL(INSERT_VERSION);
-                        db.execSQL(INSERT_ENABLED);
-                        db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
-
-                        // We can rely on the transaction to protect the database from
-                        // issues due to reads while writing, but need to use
-                        // a lock to avoid problems on the file system part
+                    if (db != null && db.isOpen()) {
                         if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)lock");
                         sDbLock.writeLock().lock();
                         if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)lock");
-                        lockOpen = true;
+                        
+                        try {
+                            // check the db version again to make sure that another thread has not already done the upgrade
+                            // in the meantime
+                            if (sDbVersion < DATABASE_VERSION) {                                
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)begin");
+                                db.beginTransaction();
+                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)begin");
 
-                        // check the db version again to make sure that another thread has not already done the upgrade
-                        // in the meantime
-                        if (sDbVersion < DATABASE_VERSION) {
-                            try {
-                                purgeSettings();
-                                
-                                // remove uid dirs from the settings directory
-                                // TODO: improve handling so that if an exception happens while
-                                //      this process is in progress, it doesn't leave the filesystem
-                                //      entries in an invalid state
-                                File settingsDir = new File(SETTINGS_DIRECTORY);
-                                for (File packageDir : settingsDir.listFiles()) {
-                                    for (File uidDir : packageDir.listFiles()) {
-                                        if (uidDir.isDirectory()) {
-                                            File[] settingsFiles = uidDir.listFiles();
-                                            // copy the first found (most likely
-                                            // the only one) one level up
-                                            if (settingsFiles[0] != null) {
-                                                File newPath = new File(packageDir + "/"
-                                                        + settingsFiles[0].getName());
-                                                newPath.delete();
-                                                settingsFiles[0].renameTo(newPath);
-                                                deleteRecursive(uidDir);
+                                try {
+                                    db.execSQL("DROP TABLE IF EXISTS " + TABLE_VERSION + ";");
+                                    db.execSQL(CREATE_TABLE_ALLOWED_CONTACTS);
+                                    db.execSQL(CREATE_TABLE_MAP);
+                                    db.execSQL(INSERT_VERSION);
+                                    db.execSQL(INSERT_ENABLED);
+                                    db.execSQL(INSERT_NOTIFICATIONS_ENABLED);
+
+                                    purgeSettings();
+                                    
+                                    // remove uid dirs from the settings directory
+                                    // TODO: improve handling so that if an exception happens while
+                                    //      this process is in progress, it doesn't leave the filesystem
+                                    //      entries in an invalid state
+                                    File settingsDir = new File(SETTINGS_DIRECTORY);
+                                    for (File packageDir : settingsDir.listFiles()) {
+                                        for (File uidDir : packageDir.listFiles()) {
+                                            if (uidDir.isDirectory()) {
+                                                File[] settingsFiles = uidDir.listFiles();
+                                                // copy the first found (most likely
+                                                // the only one) one level up
+                                                if (settingsFiles[0] != null) {
+                                                    File newPath = new File(packageDir + "/"
+                                                            + settingsFiles[0].getName());
+                                                    newPath.delete();
+                                                    settingsFiles[0].renameTo(newPath);
+                                                    deleteRecursive(uidDir);
+                                                }
                                             }
                                         }
                                     }
+    
+                                    db.setTransactionSuccessful();
+                                    sDbVersion = DATABASE_VERSION;
+                                } finally {                                
+                                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
+                                    db.endTransaction();
+                                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
                                 }
-
-                                db.setTransactionSuccessful();
-                                
-                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
-                                db.endTransaction();
-                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
-                                transactionOpen = false;
-                                sDbVersion = DATABASE_VERSION;
-                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
-                                sDbLock.writeLock().unlock();
-                                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
-                                lockOpen = false;
-                            } catch (Exception e) {
-                                Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Exception occurred while making filesystem changes", e);
+                            } else {
+                                // The database has been upgraded elsewhere; end the db transaction
+                                // and don't make any further changes
                             }
-                        } else {
-                            // The database has been upgraded elsewhere; end the db transaction
-                            // and don't make any further changes
+                                
+                        } finally {
+                            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
+                            sDbLock.writeLock().unlock();
+                            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
                         }
                     }
                 } catch (SQLException e) {
                     Log.e(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: SQLException occurred performing database upgrade", e);
                 } finally {
-                    if (transactionOpen) {
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (pre)end");
-                        db.endTransaction();
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Transaction: (post)end");
-                        transactionOpen = false;
-                    }
-                    if (lockOpen) {
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (pre)unlock");
-                        sDbLock.writeLock().unlock();
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: WriteLock: (post)unlock");
-                        lockOpen = false;
-                    }
                     closeIdleDatabase();
                 }
                 break;
@@ -506,10 +485,7 @@ public final class PrivacyPersistenceAdapter {
      */
     public boolean saveSettings(PrivacySettings s) {
         boolean result = false;
-        
-        boolean transactionOpen = false;
-        boolean lockOpen = false;
-        
+
         String packageName = s.getPackageName();
 
         if (packageName == null || packageName.isEmpty()) {
@@ -584,145 +560,126 @@ public final class PrivacyPersistenceAdapter {
             db = getDatabase();
 
             if (db != null && db.isOpen()) {
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)lock");
+                sDbLock.writeLock().lock();
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)lock");
                 try {
-                    // don't actually need to 'lock' until quite late, because
-                    // the transaction should prevent this interfering with queries
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)begin");
                     db.beginTransaction();
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)begin");
-                    transactionOpen = true;
+                    try {
 
-                    // save settings to the DB
-                    Integer id = s.get_id();
+                        // save settings to the DB
+                        Integer id = s.get_id();
 
-                    if (id != null) { // existing entry -> update
-                        if (db.update(TABLE_SETTINGS, values, "_id=?", new String[] { id.toString() }) < 1) {
-                            throw new Exception("saveSettings - failed to update database entry");
-                        }
-
-                        db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?", new String[] { id.toString() });
-                        int[] allowedContacts = s.getAllowedContacts();
-                        if (allowedContacts != null) {
-                            ContentValues contactsValues = new ContentValues();
-                            for (int i = 0; i < allowedContacts.length; i++) {
-                                contactsValues.put("settings_id", id);
-                                contactsValues.put("contact_id", allowedContacts[i]);
-                                if (db.insert(TABLE_ALLOWED_CONTACTS, null, contactsValues) == -1)
-                                    throw new Exception(
-                                            "PrivacyPersistenceAdapter:saveSettings: failed to update database entry (contacts)");
+                        if (id != null) { // existing entry -> update
+                            if (db.update(TABLE_SETTINGS, values, "_id=?", new String[] { id.toString() }) < 1) {
+                                throw new Exception("saveSettings - failed to update database entry");
                             }
-                        }
 
-                    } else { // new entry -> insert if no duplicates exist
-                        // Log.d(TAG,
-                        // "saveSettings - new entry; verifying if duplicates exist");
-                        cursor = db.query(TABLE_SETTINGS, new String[] { "_id" }, "packageName=?",
-                                new String[] { s.getPackageName() }, null, null, null);
-
-                        if (cursor != null) {
-                            if (cursor.getCount() == 1) { // exactly one entry
-                                // exists -> update
-                                // Log.d(TAG, "saveSettings - updating existing entry");
-                                if (db.update(TABLE_SETTINGS, values, "packageName=?",
-                                        new String[] { s.getPackageName() }) < 1) {
-                                    throw new Exception("saveSettings - failed to update database entry");
+                            db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?", new String[] { id.toString() });
+                            int[] allowedContacts = s.getAllowedContacts();
+                            if (allowedContacts != null) {
+                                ContentValues contactsValues = new ContentValues();
+                                for (int i = 0; i < allowedContacts.length; i++) {
+                                    contactsValues.put("settings_id", id);
+                                    contactsValues.put("contact_id", allowedContacts[i]);
+                                    if (db.insert(TABLE_ALLOWED_CONTACTS, null, contactsValues) == -1)
+                                        throw new Exception(
+                                                "PrivacyPersistenceAdapter:saveSettings: failed to update database entry (contacts)");
                                 }
+                            }
 
-                                if (cursor.moveToFirst()) {
-                                    Integer idAlt = cursor.getInt(0); // id of the found
-                                    // duplicate entry
+                        } else { // new entry -> insert if no duplicates exist
+                            // Log.d(TAG,
+                            // "saveSettings - new entry; verifying if duplicates exist");
+                            cursor = db.query(TABLE_SETTINGS, new String[] { "_id" }, "packageName=?",
+                                    new String[] { s.getPackageName() }, null, null, null);
+
+                            if (cursor != null) {
+                                if (cursor.getCount() == 1) { // exactly one entry
+                                    // exists -> update
+                                    // Log.d(TAG, "saveSettings - updating existing entry");
+                                    if (db.update(TABLE_SETTINGS, values, "packageName=?",
+                                            new String[] { s.getPackageName() }) < 1) {
+                                        throw new Exception("saveSettings - failed to update database entry");
+                                    }
+
+                                    if (cursor.moveToFirst()) {
+                                        Integer idAlt = cursor.getInt(0); // id of the found
+                                        // duplicate entry
+                                        db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?",
+                                                new String[] { idAlt.toString() });
+                                        int[] allowedContacts = s.getAllowedContacts();
+                                        if (allowedContacts != null) {
+                                            ContentValues contactsValues = new ContentValues();
+                                            for (int i = 0; i < allowedContacts.length; i++) {
+                                                contactsValues.put("settings_id", idAlt);
+                                                contactsValues.put("contact_id", allowedContacts[i]);
+                                                if (db.insert(TABLE_ALLOWED_CONTACTS, null, contactsValues) == -1)
+                                                    throw new Exception(
+                                                            "saveSettings - failed to update database entry (contacts)");
+                                            }
+                                        }
+                                    }
+                                } else if (cursor.getCount() == 0) { // no entries -> insert
+                                    // Log.d(TAG, "saveSettings - inserting new entry");
+                                    long rowId = db.insert(TABLE_SETTINGS, null, values);
+                                    if (rowId == -1) {
+                                        throw new Exception(
+                                                "PrivacyPersistenceAdapter:saveSettings - failed to insert new record into DB");
+                                    }
+
                                     db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?",
-                                            new String[] { idAlt.toString() });
+                                            new String[] { Long.toString(rowId) });
                                     int[] allowedContacts = s.getAllowedContacts();
                                     if (allowedContacts != null) {
                                         ContentValues contactsValues = new ContentValues();
                                         for (int i = 0; i < allowedContacts.length; i++) {
-                                            contactsValues.put("settings_id", idAlt);
+                                            contactsValues.put("settings_id", rowId);
                                             contactsValues.put("contact_id", allowedContacts[i]);
                                             if (db.insert(TABLE_ALLOWED_CONTACTS, null, contactsValues) == -1)
                                                 throw new Exception(
-                                                        "saveSettings - failed to update database entry (contacts)");
+                                                        "PrivacyPersistenceAdapter:saveSettings:failed to update database entry (contacts)");
                                         }
                                     }
-                                }
-                            } else if (cursor.getCount() == 0) { // no entries -> insert
-                                // Log.d(TAG, "saveSettings - inserting new entry");
-                                long rowId = db.insert(TABLE_SETTINGS, null, values);
-                                if (rowId == -1) {
-                                    throw new Exception(
-                                            "PrivacyPersistenceAdapter:saveSettings - failed to insert new record into DB");
-                                }
-
-                                db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?",
-                                        new String[] { Long.toString(rowId) });
-                                int[] allowedContacts = s.getAllowedContacts();
-                                if (allowedContacts != null) {
-                                    ContentValues contactsValues = new ContentValues();
-                                    for (int i = 0; i < allowedContacts.length; i++) {
-                                        contactsValues.put("settings_id", rowId);
-                                        contactsValues.put("contact_id", allowedContacts[i]);
-                                        if (db.insert(TABLE_ALLOWED_CONTACTS, null, contactsValues) == -1)
-                                            throw new Exception(
-                                                    "PrivacyPersistenceAdapter:saveSettings:failed to update database entry (contacts)");
-                                    }
+                                } else {
+                                    // something went totally wrong and there are
+                                    // multiple entries for same identifier
+                                    throw new Exception("PrivacyPersistenceAdapter:saveSettings:duplicate entries in the privacy.db");
                                 }
                             } else {
-                                // something went totally wrong and there are
-                                // multiple entries for same identifier
-                                throw new Exception("PrivacyPersistenceAdapter:saveSettings:duplicate entries in the privacy.db");
+                                // jump to catch block to avoid marking transaction as
+                                // successful
+                                throw new Exception("PrivacyPersistenceAdapter:saveSettings:cursor is null, database access failed");
                             }
-                        } else {
-                            // jump to catch block to avoid marking transaction as
-                            // successful
-                            throw new Exception("PrivacyPersistenceAdapter:saveSettings:cursor is null, database access failed");
+                        }
+
+                        // save settings to plain text file (for access from core libraries)
+                        if (!writeExternalSettings("systemLogsSetting", packageName, s)) {
+                            throw new Exception("PrivacyPersistenceAdapter:saveSettings:failed to write systemLogsSettings file");
+                        }
+                        if (!writeExternalSettings("ipTableProtectSetting", packageName, s)) {
+                            throw new Exception("PrivacyPersistenceAdapter:saveSettings:failed to write ipTableProtectSetting file");
+                        }
+
+                        // mark DB transaction successful (commit the changes)
+                        db.setTransactionSuccessful();
+                    } finally {
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
+                        db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
+                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
+                        
+                        if (cursor != null) {
+                            cursor.close();
                         }
                     }
-
-                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)lock");
-                    sDbLock.writeLock().lock();
-                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)lock");
-                    lockOpen = true;
-                    // save settings to plain text file (for access from core libraries)
-                    if (!writeExternalSettings("systemLogsSetting", packageName, s)) {
-                        throw new Exception("PrivacyPersistenceAdapter:saveSettings:failed to write systemLogsSettings file");
-                    }
-                    if (!writeExternalSettings("ipTableProtectSetting", packageName, s)) {
-                        throw new Exception("PrivacyPersistenceAdapter:saveSettings:failed to write ipTableProtectSetting file");
-                    }
-
-                    // mark DB transaction successful (commit the changes)
-                    db.setTransactionSuccessful();
-                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
-                    db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
-                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
-                    transactionOpen = false;
+                } finally {
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
                     sDbLock.writeLock().unlock();
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
-                    lockOpen = false;
-                    result = true;
-                } finally {
-                    if (cursor != null) {
-                        cursor.close();
-                    }
-
-                    // the boolean transactionOpen and lockOpen are used
-                    // rather than multiple try-finally blocks to ensure the transaction is ended
-                    // prior to the lock being released, despite the lock being started after the
-                    // transaction
-                    if (transactionOpen) {
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
-                        db.endTransaction();
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (post)end");
-                        transactionOpen = false;
-                    }
-                    if (lockOpen) {
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (pre)unlock");
-                        sDbLock.writeLock().unlock();
-                        if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: WriteLock: (post)unlock");
-                        lockOpen = false;
-                    }
                 }
+                result = true;
             }
         } catch (Exception e) {
             Log.e(TAG, "PrivacyPersistenceAdapter:saveSettings: saving for " + packageName + " failed", e);
@@ -730,8 +687,8 @@ public final class PrivacyPersistenceAdapter {
             closeIdleDatabase();
         }
 
-        return result;
-    }
+    return result;
+}
 
     /**
      * This method creates external settings files for access from core libraries
@@ -796,9 +753,6 @@ public final class PrivacyPersistenceAdapter {
     public boolean deleteSettings(String packageName) {
         boolean result = true;
 
-        boolean transactionOpen = false;
-        boolean lockOpen = false;
-
         SQLiteDatabase db = null;
         try {
             synchronized (sDbAccessThreads) {
@@ -806,84 +760,68 @@ public final class PrivacyPersistenceAdapter {
             }
 
             db = getDatabase();
-            
-            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)begin");
-            db.beginTransaction();
-            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)begin");
-            // make sure this ends up in a consistent state
-            transactionOpen = true;
+
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)lock");
+            sDbLock.writeLock().lock();
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)lock");
             try {
-                // try deleting contacts allowed entries; do not fail if deletion
-                // not possible
-                // TODO: restructure this into a more efficient query (ideally a
-                // single query without a cursor)
-                Cursor c = db.query(TABLE_SETTINGS, new String[] { "_id" }, "packageName=?",
-                        new String[] { packageName }, null, null, null);
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)begin");
+                db.beginTransaction();
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)begin");
+                // make sure this ends up in a consistent state
+                try {
+                    // try deleting contacts allowed entries; do not fail if deletion
+                    // not possible
+                    // TODO: restructure this into a more efficient query (ideally a
+                    // single query without a cursor)
+                    Cursor c = db.query(TABLE_SETTINGS, new String[] { "_id" }, "packageName=?",
+                            new String[] { packageName }, null, null, null);
 
 
-                if (c != null && c.getCount() > 0 && c.moveToFirst()) {
-                    int id = c.getInt(0);
-                    db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?",
-                            new String[] { Integer.toString(id) });
-                    c.close();
-                } else {
-                    Log.e(TAG, "deleteSettings - database entry for " + packageName + " not found");
+                    if (c != null && c.getCount() > 0 && c.moveToFirst()) {
+                        int id = c.getInt(0);
+                        db.delete(TABLE_ALLOWED_CONTACTS, "settings_id=?",
+                                new String[] { Integer.toString(id) });
+                        c.close();
+                    } else {
+                        Log.e(TAG, "deleteSettings - database entry for " + packageName + " not found");
+                    }
+
+                    if (db.delete(TABLE_SETTINGS, "packageName=?", new String[] { packageName }) == 0) {
+                        Log.e(TAG, "deleteSettings - database entry for " + packageName + " not found");
+                    }
+
+                    // delete settings from plain text file (for access from core
+                    // libraries)
+                    File settingsPackageDir = new File("/data/system/privacy/" + packageName + "/");
+                    File systemLogsSettingFile = new File("/data/system/privacy/" + packageName
+                            + "/systemLogsSetting");
+
+                    // delete the setting files
+                    systemLogsSettingFile.delete();
+                    // delete the parent directories
+                    if (settingsPackageDir.list() == null || settingsPackageDir.list().length == 0)
+                        settingsPackageDir.delete();
+
+                    db.setTransactionSuccessful();
+                } finally {
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
+                    db.endTransaction();
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
                 }
-
-                if (db.delete(TABLE_SETTINGS, "packageName=?", new String[] { packageName }) == 0) {
-                    Log.e(TAG, "deleteSettings - database entry for " + packageName + " not found");
-                }
-
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)lock");
-                sDbLock.writeLock().lock();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)lock");
-                lockOpen = true;
-                // delete settings from plain text file (for access from core
-                // libraries)
-                File settingsPackageDir = new File("/data/system/privacy/" + packageName + "/");
-                File systemLogsSettingFile = new File("/data/system/privacy/" + packageName
-                        + "/systemLogsSetting");
-
-                // delete the setting files
-                systemLogsSettingFile.delete();
-                // delete the parent directories
-                if (settingsPackageDir.list() == null || settingsPackageDir.list().length == 0)
-                    settingsPackageDir.delete();
-
-                db.setTransactionSuccessful();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
-                db.endTransaction();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
-                transactionOpen = false;
+            } finally {
                 if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
                 if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
-                lockOpen = false;
-            } catch (Exception e) {
-                result = false;
-                Log.e(TAG, "PrivacyPersistenceAdapter:deleteSettings - could not delete settings", e);
             }
         } catch (SQLiteException e) {
             result = false;
             Log.e(TAG, "PrivacyPersistenceAdapter:deleteSettings: failed to open the database, or open a transaction", e);
+        } catch (Exception e) {
+            result = false;
+            Log.e(TAG, "PrivacyPersistenceAdapter:deleteSettings - could not delete settings", e);
         } finally {
-            // the boolean transactionOpen and lockOpen are used
-            // rather than multiple try-finally blocks to ensure the transaction is ended
-            // prior to the lock being released, despite the lock being started after the
-            // transaction
-            if (transactionOpen) {
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
-                db.endTransaction();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (post)end");
-                transactionOpen = false;
-            }
-            if (lockOpen) {
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)unlock");
-                sDbLock.writeLock().unlock();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (post)unlock");
-                lockOpen = false;
-            }
-            closeIdleDatabase();            
+            closeIdleDatabase();
         }
 
         return result;
@@ -948,10 +886,7 @@ public final class PrivacyPersistenceAdapter {
      */
     public boolean purgeSettings() {
         boolean result = true;
-        
-        boolean lockOpen = false;
-        boolean transactionOpen = false;
-        
+
         // get installed apps
         Set<String> apps = new HashSet<String>();
         PackageManager pMan = mContext.getPackageManager();
@@ -961,7 +896,7 @@ public final class PrivacyPersistenceAdapter {
         }
 
         SQLiteDatabase db = null;
-        
+
         try {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
@@ -973,70 +908,59 @@ public final class PrivacyPersistenceAdapter {
                 Log.e(TAG, "PrivacyPersistenceAdapter:purgeSettings: db could not be obtained");
                 return false;
             }
-            
-            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)begin");
-            db.beginTransaction();
-            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)begin");
-            transactionOpen = true;
 
-            Cursor cursor = null;
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)lock");
+            sDbLock.writeLock().lock();
+            if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)lock");
             try {
-                cursor = query(db, TABLE_SETTINGS, new String[] { "packageName" }, null, null, null, null,
-                        null, null);
-                if (cursor != null && cursor.getCount() > 0 && cursor.moveToFirst()) {
-                    do {
-                        String packageName = cursor.getString(0);
-                        if (!apps.contains(packageName)) {
-                            db.delete(TABLE_SETTINGS, "packageName = ?", new String [] { packageName });
-                        }
-                    } while (cursor.moveToNext());
-                }
-
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)lock");
-                sDbLock.writeLock().lock();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)lock");
-                lockOpen = true;
-                // delete obsolete settings directories
-                File settingsDir = new File(SETTINGS_DIRECTORY);
-                for (File packageDir : settingsDir.listFiles()) {
-                    String packageName = packageDir.getName();
-                    if (!apps.contains(packageName)) { // remove package dir if no such
-                        // app installed
-                        deleteRecursive(packageDir);
+                Cursor cursor = null;
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)begin");
+                db.beginTransaction();
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)begin");
+                try {
+                    cursor = query(db, TABLE_SETTINGS, new String[] { "packageName" }, null, null, null, null,
+                            null, null);
+                    if (cursor != null && cursor.getCount() > 0 && cursor.moveToFirst()) {
+                        do {
+                            String packageName = cursor.getString(0);
+                            if (!apps.contains(packageName)) {
+                                db.delete(TABLE_SETTINGS, "packageName = ?", new String [] { packageName });
+                            }
+                        } while (cursor.moveToNext());
                     }
+
+                    // delete obsolete settings directories
+                    File settingsDir = new File(SETTINGS_DIRECTORY);
+                    for (File packageDir : settingsDir.listFiles()) {
+                        String packageName = packageDir.getName();
+                        if (!apps.contains(packageName)) { // remove package dir if no such
+                            // app installed
+                            deleteRecursive(packageDir);
+                        }
+                    }
+
+                    db.setTransactionSuccessful();
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
+                    db.endTransaction();
+                    if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
                 }
-                
-                db.setTransactionSuccessful();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
-                db.endTransaction();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
-                transactionOpen = false;
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
-                sDbLock.writeLock().unlock();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
-                lockOpen = false;
-            } catch (Exception e) {
-                Log.e(TAG, "PrivacyPersistenceAdapter:purgeSettings - purging DB failed", e);
-                result = false;
             } finally {
-                if (cursor != null) {
-                    cursor.close();
-                }
-            }
-            return result;
-        } finally {
-            if (transactionOpen) {
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (pre)end");
-                db.endTransaction();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Transaction: (post)end");
-            }
-            if (lockOpen) {
                 if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (pre)unlock");
                 sDbLock.writeLock().unlock();
                 if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: WriteLock: (post)unlock");
             }
+        } catch (Exception e) {
+            Log.e(TAG, "PrivacyPersistenceAdapter:purgeSettings - purging DB failed", e);
+            result = false;
+        } finally {
             closeIdleDatabase();
         }
+
+        return result;
     }
     
 
