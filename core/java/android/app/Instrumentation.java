@@ -1406,7 +1406,7 @@ public class Instrumentation {
         boolean isAllowed = true;
         try{
         	Log.i("PrivacyContext","now we are in execStartActivity() from package: " + who.getPackageName());
-            if(intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL)){
+            if(intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL))){
             	Log.i("PrivacyContext","package: " + who.getPackageName() + " tries to take a phone call");
         		if(pSetMan == null) pSetMan = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
         		PrivacySettings settings = pSetMan.getSettings(who.getPackageName(), -1);
