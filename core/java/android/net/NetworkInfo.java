@@ -165,6 +165,13 @@ public class NetworkInfo implements Parcelable {
         }
     }
 
+    //------------------------------------------------------------------------------------------------
+    /**{@hide}* Used for set state to get better working Privacy*/
+    public void setState(State state){
+	   this.mState = state;
+    }
+    //------------------------------------------------------------------------------------------------
+
     /**
      * Reports the type of network to which the
      * info in this {@code NetworkInfo} pertains.
