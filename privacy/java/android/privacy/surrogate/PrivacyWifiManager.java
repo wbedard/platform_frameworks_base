@@ -32,7 +32,7 @@ public class PrivacyWifiManager extends WifiManager{
 	
 
 	public PrivacyWifiManager(Context context, IWifiManager service){
-		super(context,service);
+		super(context, service);
 		this.context = context;
 		pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
 	}
