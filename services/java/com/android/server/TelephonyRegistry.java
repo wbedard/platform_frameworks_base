@@ -63,7 +63,10 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
     private static final boolean DBG = false;
     private static final boolean DBG_LOC = false;
 
+    // BEGIN privacy-modified
+    // private static class Record {
     public static class Record {
+    // END privacy-modified
         String pkgForDebug;
 
         IBinder binder;
@@ -80,6 +83,9 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
                     " events=" + Integer.toHexString(events) + "}";
         }
     }
+
+    // BEGIN privacy-modified
+    // these were all private, now protected
 
     protected final Context mContext;
 
@@ -124,7 +130,7 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
     protected int mOtaspMode = ServiceStateTracker.OTASP_UNKNOWN;
 
     protected List<CellInfo> mCellInfo = null;
-
+    // END privacy-modified
     static final int PHONE_STATE_PERMISSION_MASK =
                 PhoneStateListener.LISTEN_CALL_FORWARDING_INDICATOR |
                 PhoneStateListener.LISTEN_CALL_STATE |
@@ -165,7 +171,11 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
     // calls go through a oneway interface and local calls going through a
     // handler before they get to app code.
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
+    // TelephonyRegistry(Context context) {
     protected TelephonyRegistry(Context context) {
+    // END privacy-modified
         CellLocation  location = CellLocation.getEmpty();
 
         // Note that location can be null for non-phone builds like
@@ -312,7 +322,11 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
     }
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
+    // private void remove(IBinder binder) {
     protected void remove(IBinder binder) {
+    // END privacy-modified
         synchronized (mRecords) {
             final int recordCount = mRecords.size();
             for (int i = 0; i < recordCount; i++) {
@@ -334,7 +348,6 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
             for (Record r : mRecords) {
                 if ((r.events & PhoneStateListener.LISTEN_CALL_STATE) != 0) {
                     try {
-                    	
                         r.callback.onCallStateChanged(state, incomingNumber);
                     } catch (RemoteException ex) {
                         mRemoveList.add(r.binder);
@@ -352,11 +365,15 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
         synchronized (mRecords) {
             mServiceState = state;
-	    mServiceState.setOperatorName("", "", "");
+            // BEGIN privacy-added
+	        mServiceState.setOperatorName("", "", "");
+	        // END privacy-added
             for (Record r : mRecords) {
                 if ((r.events & PhoneStateListener.LISTEN_SERVICE_STATE) != 0) {
                     try {
-			state.setOperatorName("", "", "");
+                        // BEGIN privacy-added
+			            state.setOperatorName("", "", "");
+			            // END privacy-added
                         r.callback.onServiceStateChanged(new ServiceState(state));
                     } catch (RemoteException ex) {
                         mRemoveList.add(r.binder);
@@ -642,7 +659,11 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
     // the legacy intent broadcasting
     //
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
+    // private void broadcastServiceStateChanged(ServiceState state) {
     protected void broadcastServiceStateChanged(ServiceState state) {
+    // END privacy-modified
         long ident = Binder.clearCallingIdentity();
         try {
             mBatteryStats.notePhoneState(state.getState());
@@ -741,7 +762,10 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
     protected boolean checkNotifyPermission(String method) {
+    // END privacy-modified
         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
                 == PackageManager.PERMISSION_GRANTED) {
             return true;
@@ -752,7 +776,10 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         return false;
     }
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
     protected void checkListenerPermission(int events) {
+    // END privacy-modified
         if ((events & PhoneStateListener.LISTEN_CELL_LOCATION) != 0) {
             mContext.enforceCallingOrSelfPermission(
                     android.Manifest.permission.ACCESS_COARSE_LOCATION, null);
@@ -771,7 +798,10 @@ class TelephonyRegistry extends ITelephonyRegistry.Stub {
         }
     }
 
+    // BEGIN privacy-modified
+    // made protected to allow subclassing
     protected void handleRemoveListLocked() {
+    // END privacy-modified
         if (mRemoveList.size() > 0) {
             for (IBinder b: mRemoveList) {
                 remove(b);

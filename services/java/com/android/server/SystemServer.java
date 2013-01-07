@@ -229,7 +229,10 @@ class ServerThread extends Thread {
             ServiceManager.addService(Context.DISPLAY_SERVICE, display, true);
 
             Slog.i(TAG, "Telephony Registry");
+            // BEGIN privacy-modified
+            // telephonyRegistry = new TelephonyRegistry(context);
             telephonyRegistry = new PrivacyTelephonyRegistry(context);
+            // END privacy-modified
             ServiceManager.addService("telephony.registry", telephonyRegistry);
 
             Slog.i(TAG, "Scheduling Policy");
