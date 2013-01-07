@@ -167,7 +167,7 @@ class ContextImpl extends Context {
     /*package*/ ActivityThread mMainThread;
     private Context mOuterContext;
     // BEGIN privacy-added
-    private static Context sOuterContext;
+    private static Context sOuterContext = null;
     // END privacy-added
     private IBinder mActivityToken = null;
     private ApplicationContentResolver mContentResolver;
@@ -282,8 +282,9 @@ class ContextImpl extends Context {
                 public Object createService(ContextImpl ctx) {
                     IBinder b = ServiceManager.getService(ACCOUNT_SERVICE);
                     IAccountManager service = IAccountManager.Stub.asInterface(b);
+                    // BEGIN privacy-modified
+                    Log.d(TAG, "PDroid:ContextImpl: returning PrivacyAccountManager rather than AccountManager");
                     //return new AccountManager(ctx, service);
-		    // BEGIN privacy-modified
                     return new PrivacyAccountManager(ctx, service);
                     // END privacy-modified
                 }});
@@ -319,11 +320,14 @@ class ContextImpl extends Context {
         registerService(CONNECTIVITY_SERVICE, new StaticServiceFetcher() {
                 public Object createStaticService() {
                     IBinder b = ServiceManager.getService(CONNECTIVITY_SERVICE);
-		    //BEGIN PRIVACY ADDED
+                    // BEGIN privacy-modified
+                    // SM: Having a 'static outer context' may be problematic if
+                    //      there is more than one instance of this class, ever.
+                    Log.d(TAG, "PDroid:ContextImpl: returning PrivacyConnectivityManager");
                     //return new ConnectivityManager(IConnectivityManager.Stub.asInterface(b));
-		    IConnectivityManager service = IConnectivityManager.Stub.asInterface(b);
-		    return new PrivacyConnectivityManager(service, getStaticOuterContext());
-		    //END PRIVACY ADDED
+                    IConnectivityManager service = IConnectivityManager.Stub.asInterface(b);
+                    return new PrivacyConnectivityManager(service, getStaticOuterContext());
+                    // END privacy-modified
                 }});
 
         registerService(COUNTRY_DETECTOR, new StaticServiceFetcher() {
@@ -383,15 +387,16 @@ class ContextImpl extends Context {
 
         registerService(LOCATION_SERVICE, new ServiceFetcher() {
                 public Object createService(ContextImpl ctx) {
-                    
-	            IBinder b = ServiceManager.getService(LOCATION_SERVICE);
-
-		    //return new LocationManager(ctx, ILocationManager.Stub.asInterface(b));
-		    
-		    // BEGIN privacy-modified
-	            return new PrivacyLocationManager(ILocationManager.Stub.asInterface(b), getStaticOuterContext());
-		    // END privacy-modified
-                    
+    	            IBinder b = ServiceManager.getService(LOCATION_SERVICE);
+    
+    	            // BEGIN privacy-modified
+    	            //return new LocationManager(ctx, ILocationManager.Stub.asInterface(b));
+    	            Log.d(TAG, "PDroid:ContextImpl: returning PrivacyLocationManager");
+    	            // SM: I'm not sure whyt this is using getStaticOuterContext rather than getOuterContext.
+    	            // Would have thought it should have been the following line:
+    	            // return new PrivacyLocationManager(ILocationManager.Stub.asInterface(b), ctx.getOuterContext());
+    	            return new PrivacyLocationManager(ILocationManager.Stub.asInterface(b), getStaticOuterContext());
+    	            // END privacy-modified                    
                 }});
 
         registerService(NETWORK_POLICY_SERVICE, new ServiceFetcher() {
@@ -461,8 +466,9 @@ class ContextImpl extends Context {
 
         registerService(TELEPHONY_SERVICE, new ServiceFetcher() {
                 public Object createService(ContextImpl ctx) {
-                    //return new TelephonyManager(ctx.getOuterContext());
                     // BEGIN privacy-modified
+                    //return new TelephonyManager(ctx.getOuterContext());
+                    Log.d(TAG, "PDroid:ContextImpl: returning PrivacyTelephonyManager");
                     return new PrivacyTelephonyManager(ctx.getOuterContext());
                     // END privacy-modified
                 }});
@@ -501,10 +507,11 @@ class ContextImpl extends Context {
                 public Object createService(ContextImpl ctx) {
                     IBinder b = ServiceManager.getService(WIFI_SERVICE);
                     IWifiManager service = IWifiManager.Stub.asInterface(b);
+                    // BEGIN privacy-modified
                     //return new WifiManager(service, ctx.mMainThread.getHandler());
-		    // BEGIN privacy
-		    return new PrivacyWifiManager(service, ctx.mMainThread.getHandler(), ctx);
-                    // END privacy
+                    Log.d(TAG, "PDroid:ContextImpl: returning PrivacyWifiManager");
+		            return new PrivacyWifiManager(service, ctx.mMainThread.getHandler(), ctx);
+                    // END privacy-modified
                 }});
 
         registerService(WIFI_P2P_SERVICE, new ServiceFetcher() {
@@ -521,9 +528,10 @@ class ContextImpl extends Context {
         // BEGIN privacy-added
         registerService("privacy", new StaticServiceFetcher() {
                 public Object createStaticService() {
+                    Log.d(TAG, "PDroid:ContextImpl: Creating static privacy service");
                     IBinder b = ServiceManager.getService("privacy");
                     IPrivacySettingsManager service = IPrivacySettingsManager.Stub.asInterface(b);
-                    return new PrivacySettingsManager(getStaticOuterContext(),service);
+                    return new PrivacySettingsManager(getStaticOuterContext(), service);
                 }});
         // END privacy-added
     }
@@ -1579,6 +1587,9 @@ class ContextImpl extends Context {
     }
 
     ContextImpl() {
+        if (sOuterContext != null) {
+            Log.w(TAG, "PDroid:ContextImpl: ContextImpl being created but already has sOuterContext");
+        }
         sOuterContext = mOuterContext = this;
     }
 
@@ -1594,6 +1605,11 @@ class ContextImpl extends Context {
         mResources = context.mResources;
         mMainThread = context.mMainThread;
         mContentResolver = context.mContentResolver;
+        
+        if (sOuterContext != null) {
+            Log.w(TAG, "PDroid:ContextImpl: ContextImpl being created but already has sOuterContext");
+        }
+
         sOuterContext = mOuterContext = this;
     }
 
@@ -1654,6 +1670,10 @@ class ContextImpl extends Context {
     }
 
     final void setOuterContext(Context context) {
+        if (sOuterContext != null) {
+            Log.w(TAG, "PDroid:ContextImpl: ContextImpl being created but already has sOuterContext");
+        }
+
         sOuterContext = mOuterContext = context;
     }
 
