@@ -298,7 +298,6 @@ public class ConnectivityManager {
 
     public static final int DEFAULT_NETWORK_PREFERENCE = TYPE_WIFI;
 
-//added static to the mService
     private final IConnectivityManager mService;
 
     public static boolean isNetworkTypeValid(int networkType) {
@@ -614,8 +613,9 @@ public class ConnectivityManager {
         }
     }
 
-
-    //hide entfernt!
+    /**
+     * {@hide}
+     */
     public ConnectivityManager(IConnectivityManager service) {
         mService = checkNotNull(service, "missing IConnectivityManager");
     }

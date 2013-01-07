@@ -161,7 +161,9 @@ class ServerThread extends Thread {
             context = ActivityManagerService.main(factoryTest);
 
             Slog.i(TAG, "Telephony Registry");
+            // BEGIN privacy-modified
             ServiceManager.addService("telephony.registry", new PrivacyTelephonyRegistry(context));
+            // END privacy-modified
 
             Slog.i(TAG, "Scheduling Policy");
             ServiceManager.addService(Context.SCHEDULING_POLICY_SERVICE,

@@ -484,7 +484,10 @@ public class ServiceState implements Parcelable {
                 + " EmergOnly=" + mIsEmergencyOnly);
     }
 
+   // BEGIN privacy-modified
+   // Was originally private
    void setNullState(int state) {
+   // END privacy-modified
         mState = state;
         mRoaming = false;
         mOperatorAlphaLong = null;

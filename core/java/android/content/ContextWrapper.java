@@ -44,8 +44,6 @@ import java.io.InputStream;
  */
 public class ContextWrapper extends Context {
     Context mBase;
-	
-    private static final String TAG = "PrivacyContextWrapper";
 
     public ContextWrapper(Context base) {
         mBase = base;
