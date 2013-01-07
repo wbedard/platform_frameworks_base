@@ -79,7 +79,7 @@ public class WifiInfo implements Parcelable {
     private boolean mMeteredHint;
 
 
-    //---------------------------------------------------------------------------------------------------------------
+    // BEGIN privacy-added
     /**
      * Constructor for faking WifiInfo
      * @hide
@@ -93,7 +93,7 @@ public class WifiInfo implements Parcelable {
         mLinkSpeed = -1;
         mHiddenSSID = false;
     }
-    //---------------------------------------------------------------------------------------------------------------
+    // END privacy-added
 
 
     WifiInfo() {
