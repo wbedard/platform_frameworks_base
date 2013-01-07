@@ -338,7 +338,6 @@ public class ConnectivityManager {
      */
     public static final int CONNECTIVITY_CHANGE_DELAY_DEFAULT = 3000;
 
-//added static to the mService
     private final IConnectivityManager mService;
 
     public static boolean isNetworkTypeValid(int networkType) {
@@ -654,8 +653,9 @@ public class ConnectivityManager {
         }
     }
 
-
-    //hide entfernt!
+    /**
+     * {@hide}
+     */
     public ConnectivityManager(IConnectivityManager service) {
         mService = checkNotNull(service, "missing IConnectivityManager");
     }
