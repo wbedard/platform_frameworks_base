@@ -431,7 +431,7 @@ public final class PrivacyPersistenceAdapter {
                     new String[] { packageName }, null, null, null, null);
 
             if (cursor != null) {
-                if (cursor.getCount() != 1) {
+                if (cursor.getCount() > 1) {
                     Log.w(TAG, "Multiple privacy settings found for package " + packageName);
                 }
                 if (cursor.moveToFirst()) {
