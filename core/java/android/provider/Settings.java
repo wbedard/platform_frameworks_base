@@ -54,6 +54,17 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 
+//////////////////////////////////////////////////
+import android.content.pm.IPackageManager;
+import android.os.ServiceManager;
+import android.os.Process;
+import java.util.Random;
+
+import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacySettings;
+import android.privacy.PrivacySettingsManager;
+//////////////////////////////////////////////////
+
 /**
  * The Settings provider contains global system-level device preferences.
  */
@@ -3491,6 +3502,71 @@ public final class Settings {
             MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_PATTERN_TACTILE_FEEDBACK_ENABLED);
         }
 
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//BEGIN PRIVACY 
+		
+		private static final String PRIVACY_TAG = "PM,SecureSettings";
+		private static Context context;
+		
+		private static PrivacySettingsManager pSetMan;
+		
+		private static boolean privacyMode = false;
+		
+		private static IPackageManager mPm;
+		
+		//END PRIVACY 		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//BEGIN PRIVACY
+		
+		/**
+		* {@hide}
+		* @return package names of current process which is using this object or null if something went wrong
+		*/
+		private static String[] getPackageName(){
+			try{
+				if(mPm != null){
+					int uid = Process.myUid();
+					final String[] package_names = mPm.getPackagesForUid(uid);
+					return package_names;
+				}
+				else{
+					mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+					int uid = Process.myUid();
+					final String[] package_names = mPm.getPackagesForUid(uid);
+					return package_names;
+				}
+			}
+			catch(Exception e){
+				e.printStackTrace();
+				Log.e(PRIVACY_TAG,"something went wrong with getting package name");
+				return null;
+			}
+		}
+		/**
+		* {@hide}
+		* This method sets up all variables which are needed for privacy mode! It also writes to privacyMode, if everything was successfull or not! 
+		* -> privacyMode = true ok! otherwise false!
+		*/
+		private static void initiate(){
+			try{
+				context = null;
+				pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+				mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+				privacyMode = true;
+			}
+			catch(Exception e){
+				e.printStackTrace();
+				Log.e(PRIVACY_TAG, "Something went wrong with initalize variables");
+				privacyMode = false;
+			}
+		}
+		//END PRIVACY
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      
+
         /**
          * Look up a name in the database.
          * @param resolver to access the database with
@@ -3502,7 +3578,45 @@ public final class Settings {
                 sNameValueCache = new NameValueCache(SYS_PROP_SETTING_VERSION, CONTENT_URI,
                                                      CALL_METHOD_GET_SECURE);
             }
-
+            
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//BEGIN PRIVACY
+			if(name.equals(ANDROID_ID)){ //normally it should work with sNameValueCache.getString instead of sLockSettings
+				initiate();
+				try{
+					if(pSetMan == null) pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+					if(mPm == null) mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
+					PrivacySettings settings = null;
+					final String[] packages = getPackageName();
+					if(packages != null && packages.length > 0){
+						for(int i = 0; i < packages.length; i++){
+							settings = pSetMan.getSettings(packages[i]);
+							if(settings != null && settings.getAndroidIdSetting() != PrivacySettings.REAL){
+								String output = settings.getAndroidID();
+								if(output != null){
+									pSetMan.notification(packages[i], 0, settings.getAndroidIdSetting(), PrivacySettings.DATA_ANDROID_ID, output, null);
+									return output;
+								} else{
+									pSetMan.notification(packages[i], 0, settings.getAndroidIdSetting(), PrivacySettings.DATA_ANDROID_ID, "q4a5w896ay21dr46", null);
+									return "q4a5w896ay21dr46"; //we can not pull out empty android id, because we get bootlops then
+								}
+							}
+							if(i == packages.length - 1) //package is allowed to get android id
+								pSetMan.notification(packages[packages.length - 1], 0, PrivacySettings.REAL, PrivacySettings.DATA_ANDROID_ID, null, null);
+							settings = null;
+						}
+					} else{
+						pSetMan.notification(packages[packages.length - 1], 0, PrivacySettings.REAL, PrivacySettings.DATA_ANDROID_ID, null, null);
+					}
+				}
+				catch (Exception e){
+					e.printStackTrace();
+					Log.e(PRIVACY_TAG,"Got exception in  getString()");
+				}
+			}
+			//END PRIVACY
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            
             if (sLockSettings == null) {
                 sLockSettings = ILockSettings.Stub.asInterface(
                         (IBinder) ServiceManager.getService("lock_settings"));
