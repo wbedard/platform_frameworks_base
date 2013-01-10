@@ -1,0 +1,49 @@
+import android.content.Context;
+import android.net.wifi.IWifiManager;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
+import android.os.ServiceManager;
+import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacySettingsManager;
+import android.util.Log;
+
+
+public class PrivacyWifiManager extends WifiManager {
+    
+    private PrivacySettingsManager mPrvSvc; 
+    private static final String TAG = "PrivacyWifiManager";
+    
+    private Context context;
+    
+    public PrivacyWifiManager(Context context, IWifiManager service) {
+        super(context, service);
+        this.context = context;
+    }
+    
+    /**
+     * If an app is not allowed to read the wifi settings, it is
+     * also prevented from adding a new network. It will always receive the
+     * 'failed' flag
+     */
+    @Override
+    public int addNetwork(WifiConfiguration config) {
+        PrivacySettings privacySettings = 
+        return -1;
+    }
+    
+    private PrivacySettings getPrivacySettings() {
+        PrivacySettingsManager prvSvc = getPrivacySettingsManager();
+    }
+    
+    private PrivacySettingsManager getPrivacySettingsManager() {
+        // If there is no existing connection to the service, connect to it
+        if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+            Log.d(TAG, "PrivacyWifiManager:getPrivacySettingsManager: Privacy service is null or disconnected - attempt to connect")
+            mPrvSvc = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        }
+        if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+            Log.d(TAG, "PrivacyWifiManager:getPrivacySettingsManager: Failed to connect to the privacy service: access will be denied"))
+        }
+        return mPrvSvc;
+    }
+}

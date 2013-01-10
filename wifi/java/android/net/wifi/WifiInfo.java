@@ -76,6 +76,24 @@ public class WifiInfo implements Parcelable {
      */
     private boolean mMeteredHint;
 
+
+    // BEGIN privacy-added
+    /**
+     * Constructor for faking WifiInfo
+     * @hide
+     */
+    public WifiInfo(boolean fake){
+	mSSID = "";
+        mBSSID = "";
+        mNetworkId = -1;
+        mSupplicantState = SupplicantState.UNINITIALIZED;
+        mRssi = -9999;
+        mLinkSpeed = -1;
+        mHiddenSSID = false;
+    }
+    // END privacy-added
+
+
     WifiInfo() {
         mSSID = null;
         mBSSID = null;
