@@ -80,7 +80,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 return service.deleteSettings(packageName);
             } else {
-                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:deleteSettings: PrivacySettingsManagerService is null");
                 return false;
             }
         } catch (RemoteException e) {
@@ -118,7 +118,7 @@ public final class PrivacySettingsManager {
               if (service != null) {
                   service.notification(packageName, accessMode, dataType, output);
               } else {
-                  Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+                  Log.e(TAG, "PrivacySettingsManager:notification: PrivacySettingsManagerService is null");
               }            
           } catch (RemoteException e) {
               Log.e(TAG, "RemoteException in notification: ", e);
@@ -130,7 +130,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 service.registerObservers();
             } else {
-                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:registerObservers: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in registerObservers: ", e);
@@ -142,7 +142,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 service.addObserver(packageName);
             } else {
-                Log.e(TAG, "deleteSettings - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:addObserver: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in addObserver: ", e);
@@ -154,7 +154,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 return service.purgeSettings();
             } else {
-				Log.e(TAG, "purgeSettings - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:purgeSettings: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in purgeSettings: ", e);
@@ -167,7 +167,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 return service.getVersion();
             } else {
-                Log.e(TAG, "getVersion - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:getVersion: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in getVersion: ", e);
@@ -180,7 +180,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 return service.setEnabled(enable);
             } else {
-                Log.e(TAG, "setEnabled - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:setEnabled: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setEnabled: ", e);
@@ -193,7 +193,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 return service.setNotificationsEnabled(enable);
             } else {
-                Log.e(TAG, "setNotificationsEnabled - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:setNotificationsEnabled: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setNotificationsEnabled: ", e);
@@ -206,7 +206,7 @@ public final class PrivacySettingsManager {
             if (service != null) {
                 service.setBootCompleted();
             } else {
-                Log.e(TAG, "setBootCompleted - PrivacySettingsManagerService is null");
+                Log.e(TAG, "PrivacySettingsManager:setBootCompleted: PrivacySettingsManagerService is null");
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setBootCompleted: ", e);
