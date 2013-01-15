@@ -34,6 +34,7 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
     private static final String WRITE_PRIVACY_SETTINGS = "android.privacy.WRITE_PRIVACY_SETTINGS";
     private static final String READ_PRIVACY_SETTINGS = "android.privacy.READ_PRIVACY_SETTINGS";
 
+    private static boolean sendNotifications = true; 
     private PrivacyPersistenceAdapter persistenceAdapter;
     
     private Context context;
@@ -116,7 +117,7 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
 
     public void notification(final String packageName, final byte accessMode,
             final String dataType, final String output) {
-        if (bootCompleted && notificationsEnabled) {
+        if (bootCompleted && notificationsEnabled && sendNotifications) {
             Intent intent = new Intent();
             intent.setAction(PrivacySettingsManager.ACTION_PRIVACY_NOTIFICATION);
             intent.putExtra("packageName", packageName);
@@ -232,5 +233,55 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
 		} catch (SecurityException e) {
 			return false;
 		}
+	}
+	
+	
+	public static String DEBUG_FLAG_SEND_NOTIFICATIONS = "sendNotifications";
+	public static String DEBUG_FLAG_USE_CACHE = "useCache";
+	public static String DEBUG_FLAG_CACHE_SIZE = "cacheSize";
+	public static String DEBUG_FLAG_OPEN_AND_CLOSE_DB = "openAndCloseDb";
+	
+    public void setDebugFlagInt(String flagName, int value) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        if (flagName.equals(DEBUG_FLAG_CACHE_SIZE)) {
+            this.persistenceAdapter.setCacheSize(value);
+        } else {
+            throw new RemoteException();
+        }
+    }
+    
+    public int getDebugFlagInt(String flagName) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        if (flagName.equals(DEBUG_FLAG_CACHE_SIZE)) {
+            return this.persistenceAdapter.getCacheSize();
+        } else {
+            throw new RemoteException();
+        }
+    }
+    
+    public void setDebugFlagBool(String flagName, boolean value) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        if (flagName.equals(DEBUG_FLAG_USE_CACHE)) {
+            this.persistenceAdapter.setUseCache(value);
+        } else if (flagName.equals(DEBUG_FLAG_OPEN_AND_CLOSE_DB)) {
+            this.persistenceAdapter.setOpenAndCloseDb(value);
+        } else if (flagName.equals(DEBUG_FLAG_SEND_NOTIFICATIONS)) {
+            this.sendNotifications = value;
+        } else {
+            throw new RemoteException();
+        }
+    }
+    
+    public boolean getDebugFlagBool(String flagName) throws RemoteException {
+        checkCallerCanWriteOrThrow();
+        if (flagName.equals(DEBUG_FLAG_USE_CACHE)) {
+            return this.persistenceAdapter.getUseCache();
+        } else if (flagName.equals(DEBUG_FLAG_OPEN_AND_CLOSE_DB)) {
+            return this.persistenceAdapter.getOpenAndCloseDb();
+        } else if (flagName.equals(DEBUG_FLAG_SEND_NOTIFICATIONS)) {
+            return this.sendNotifications;
+        } else {
+            throw new RemoteException();
+        }
 	}
 }
