@@ -48,7 +48,9 @@ public final class PrivacyPersistenceAdapter {
     private static final int RETRY_QUERY_COUNT = 5;
     private static final String DATABASE_FILE = "/data/system/privacy.db";
     private static final int DATABASE_VERSION = 4;
-    private static final boolean LOG_LOCKING = false;
+    private static final boolean LOG_LOCKING = true;
+    private static final boolean LOG_OPEN_AND_CLOSE = true;
+    private static final boolean LOG_CACHE = true;
     public static final int DUMMY_UID = -1;
 
     /**
@@ -58,6 +60,14 @@ public final class PrivacyPersistenceAdapter {
     public static volatile Integer sDbAccessThreads = 0;
     public static volatile int sDbVersion;
 
+    /**
+     * START DEBUG VARIABLES
+     */
+    private static volatile boolean useCache = true;
+    private static volatile boolean openAndCloseDb = true;
+    /**
+     * END DEBUG VARIABLES
+     */
     // Used to lock the database during multi-statement operations to prevent
     // internally inconsistent data reads.
     // Multiple locks could be used to improve efficiency (i.e. for different tables)
@@ -73,8 +83,9 @@ public final class PrivacyPersistenceAdapter {
     // It may be valuable to run some analyses to check the average time between something being dropped from cache
     // and being needed again. A recency-weighted LRU would be even better.
     private static final int MINIMUM_CACHE_ENTRIES = 0;
-    private static final int DEFAULT_CACHE_ENTRIES = 6; 
-    private static LruCache<String, PrivacySettings> settingsCache = new LruCache<String, PrivacySettings>(DEFAULT_CACHE_ENTRIES);
+    private static final int DEFAULT_CACHE_ENTRIES = 10; 
+    //Because having privacy settings of 'null' has meaning
+    private static LruCache<String, PrivacySettingsStub> settingsCache = new LruCache<String, PrivacySettingsStub>(DEFAULT_CACHE_ENTRIES);
 
     private static final String TABLE_SETTINGS = "settings";
     private static final String TABLE_MAP = "map";
@@ -172,6 +183,50 @@ public final class PrivacyPersistenceAdapter {
 
     private Context mContext;
 
+    
+    /**
+     * START DEBUG FUNCTIONS
+     */
+    void setUseCache(boolean value) {
+        this.useCache = value;
+        if (value) {
+            if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:setCacheSize: Cache enabled");
+        } else {
+            if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:setCacheSize: Cache disabled");
+        }
+    }
+    
+    boolean getUseCache() {
+        return this.useCache;
+    }
+    
+    void setOpenAndCloseDb(boolean value) {
+        this.openAndCloseDb = value;
+        if (value) {
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:setOpenAndCloseDb: Open and close enabled");
+        } else {
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:setOpenAndCloseDb: Open and close disabled");
+        }
+    }
+    
+    boolean getOpenAndCloseDb() {
+        return this.openAndCloseDb;
+    }
+    
+    void setCacheSize(int newSize) {
+        settingsCache.resize(newSize);
+        if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:setCacheSize: Resized cache to " + Integer.toString(newSize));
+    }
+    
+    int getCacheSize() {
+        return settingsCache.size();
+    }
+    /**
+     * END DEBUG FUNCTIONS
+     */
+
+    
+    
     public PrivacyPersistenceAdapter(Context context) {
         this.mContext = context;
 
@@ -222,6 +277,7 @@ public final class PrivacyPersistenceAdapter {
                     synchronized (sDbAccessThreads) {
                         sDbAccessThreads++;
                     }
+                    if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:upgradeDatabase: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
 
                     db = getDatabase();
                     if (db != null && db.isOpen()) {
@@ -328,6 +384,7 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:getValue: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
             db = getDatabase();
             if (db == null || !db.isOpen()) {
                 Log.e(TAG, "PrivacyPersistenceAdapter:getValue: Database not obtained while getting value for name: " + name);
@@ -375,6 +432,7 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:setValue: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
             db = getDatabase();
             if (db == null || !db.isOpen()) {
                 Log.e(TAG, "PrivacyPersistenceAdapter:setValue: Database not obtained while setting value for name: " + name);
@@ -416,9 +474,19 @@ public final class PrivacyPersistenceAdapter {
                     "PrivacyPersistenceAdapter:getSettings:insufficient application identifier - package name is required");
         }
 
-        privacySettings = settingsCache.get(packageName);
-        if (privacySettings != null) {
-            return privacySettings;
+        if (this.useCache) {
+            PrivacySettingsStub cacheResult = settingsCache.get(packageName);
+            if (cacheResult != null) {
+                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache hit for " + packageName);
+                //if the cached object is a stub, then it means that there is no privacy settings for that package, and null should be returned
+                if (cacheResult instanceof PrivacySettingsStub) {
+                    return null;
+                } else {
+                    return (PrivacySettings)cacheResult;
+                }
+            } else {
+                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache miss for " + packageName);
+            }
         }
         
         SQLiteDatabase db;
@@ -427,6 +495,7 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
             db = getDatabase();
         } catch (SQLiteException e) {
             Log.e(TAG, "getSettings - database could not be opened", e);
@@ -444,7 +513,7 @@ public final class PrivacyPersistenceAdapter {
                     new String[] { packageName }, null, null, null, null);
 
             if (cursor != null) {
-                if (cursor.getCount() != 1) {
+                if (cursor.getCount() > 1) {
                     Log.w(TAG, "Multiple privacy settings found for package " + packageName);
                 }
                 if (cursor.moveToFirst()) {
@@ -497,8 +566,14 @@ public final class PrivacyPersistenceAdapter {
         }
 
         
-        if (privacySettings != null) {
-            settingsCache.put(packageName, privacySettings);
+        if (this.useCache) {
+            if (privacySettings != null) {
+                settingsCache.put(packageName, privacySettings);
+                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache put for" + packageName);
+            } else {
+                settingsCache.put(packageName, new PrivacySettingsStub());
+                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache stub put for" + packageName);
+            }
         }
         
         return privacySettings;
@@ -587,6 +662,7 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
             db = getDatabase();
 
             if (db != null && db.isOpen()) {
@@ -696,8 +772,11 @@ public final class PrivacyPersistenceAdapter {
                         // mark DB transaction successful (commit the changes)
                         db.setTransactionSuccessful();
                         
-                        //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to save the settings?)
-                        settingsCache.remove(packageName);
+                        if (this.useCache) {
+                            //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to save the settings?)
+                            settingsCache.remove(packageName);
+                            if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Cache remove for" + packageName);
+                        }
                     } finally {
                         if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
                         db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
@@ -791,7 +870,7 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
-
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
             db = getDatabase();
 
             if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: WriteLock: (pre)lock");
@@ -838,8 +917,11 @@ public final class PrivacyPersistenceAdapter {
 
                     db.setTransactionSuccessful();
 
-                    //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to delete the settings?)
-                    settingsCache.remove(packageName);
+                    if (this.useCache) {
+                        //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to delete the settings?)
+                        settingsCache.remove(packageName);
+                        if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Cache remove for" + packageName);
+                    }
                 } finally {
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
                     db.endTransaction();
@@ -937,7 +1019,8 @@ public final class PrivacyPersistenceAdapter {
             synchronized (sDbAccessThreads) {
                 sDbAccessThreads++;
             }
-
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:purgeSettings: Increment DB access threads: now " + Integer.toString(sDbAccessThreads));
+            
             // delete obsolete entries from DB and update outdated entries
             db = getDatabase();
             if (db == null) {
@@ -1039,6 +1122,7 @@ public final class PrivacyPersistenceAdapter {
 
     private synchronized SQLiteDatabase getDatabase() {
         if (mDb == null || !mDb.isOpen() || mDb.isReadOnly()) {
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Opening privacy database");
             mDb = SQLiteDatabase.openDatabase(DATABASE_FILE, null, SQLiteDatabase.OPEN_READWRITE);
         }   
         return mDb;
@@ -1051,9 +1135,15 @@ public final class PrivacyPersistenceAdapter {
     private void closeIdleDatabase() {
         synchronized (sDbAccessThreads) {
             sDbAccessThreads--;
+            if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Decrement DB access threads: now " + Integer.toString(sDbAccessThreads));
             // only close DB if no other threads are reading
             if (sDbAccessThreads == 0 && mDb != null && mDb.isOpen()) {
-                mDb.close();
+                if (this.openAndCloseDb) { 
+                    if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Closing the PDroid database");
+                    mDb.close();
+                } else {
+                    if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Open and close DB disabled: not closing");
+                }
             }
         }
     }
