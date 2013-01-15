@@ -22,6 +22,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.os.FileUtils;
 import android.util.Log;
+import android.util.LruCache;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -66,6 +67,14 @@ public final class PrivacyPersistenceAdapter {
      * Used to save settings for access from core libraries
      */
     public static final String SETTINGS_DIRECTORY = "/data/system/privacy";
+
+    
+    // The default cache size is somewhat arbitrary at the moment
+    // It may be valuable to run some analyses to check the average time between something being dropped from cache
+    // and being needed again. A recency-weighted LRU would be even better.
+    private static final int MINIMUM_CACHE_ENTRIES = 0;
+    private static final int DEFAULT_CACHE_ENTRIES = 6; 
+    private static LruCache<String, PrivacySettings> settingsCache = new LruCache<String, PrivacySettings>(DEFAULT_CACHE_ENTRIES);
 
     private static final String TABLE_SETTINGS = "settings";
     private static final String TABLE_MAP = "map";
@@ -341,10 +350,9 @@ public final class PrivacyPersistenceAdapter {
             } catch (Exception e) {
                 Log.e(TAG, "PrivacyPersistenceAdapter:getValue: Exception occurred while getting value for name: " + name, e);
             } finally {
-                
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (pre)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (pre)unlock");
                 sDbLock.readLock().unlock();
-                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
+                if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getValue: ReadLock: (post)unlock");
             }
 
         } finally {
@@ -408,6 +416,11 @@ public final class PrivacyPersistenceAdapter {
                     "PrivacyPersistenceAdapter:getSettings:insufficient application identifier - package name is required");
         }
 
+        privacySettings = settingsCache.get(packageName);
+        if (privacySettings != null) {
+            return privacySettings;
+        }
+        
         SQLiteDatabase db;
         try {
             // indicate that the DB is being read to prevent closing by other threads
@@ -431,7 +444,7 @@ public final class PrivacyPersistenceAdapter {
                     new String[] { packageName }, null, null, null, null);
 
             if (cursor != null) {
-                if (cursor.getCount() > 1) {
+                if (cursor.getCount() != 1) {
                     Log.w(TAG, "Multiple privacy settings found for package " + packageName);
                 }
                 if (cursor.moveToFirst()) {
@@ -483,6 +496,11 @@ public final class PrivacyPersistenceAdapter {
             closeIdleDatabase();
         }
 
+        
+        if (privacySettings != null) {
+            settingsCache.put(packageName, privacySettings);
+        }
+        
         return privacySettings;
     }
 
@@ -677,6 +695,9 @@ public final class PrivacyPersistenceAdapter {
 
                         // mark DB transaction successful (commit the changes)
                         db.setTransactionSuccessful();
+                        
+                        //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to save the settings?)
+                        settingsCache.remove(packageName);
                     } finally {
                         if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:saveSettings: Transaction: (pre)end");
                         db.endTransaction(); // we want to transition from set transaction successful to end as fast as possible to avoid errors (see the Android docs)
@@ -699,8 +720,8 @@ public final class PrivacyPersistenceAdapter {
             closeIdleDatabase();
         }
 
-    return result;
-}
+        return result;
+    }
 
     /**
      * This method creates external settings files for access from core libraries
@@ -816,6 +837,9 @@ public final class PrivacyPersistenceAdapter {
                         settingsPackageDir.delete();
 
                     db.setTransactionSuccessful();
+
+                    //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to delete the settings?)
+                    settingsCache.remove(packageName);
                 } finally {
                     if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Transaction: (pre)end");
                     db.endTransaction();
