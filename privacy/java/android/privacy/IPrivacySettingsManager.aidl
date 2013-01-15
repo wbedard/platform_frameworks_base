@@ -27,4 +27,8 @@ interface IPrivacySettingsManager
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
+    void setDebugFlagInt(String flagName, int value);
+    int getDebugFlagInt(String flagName);
+    void setDebugFlagBool(String flagName, boolean value);
+    boolean getDebugFlagBool(String flagName);
 }
