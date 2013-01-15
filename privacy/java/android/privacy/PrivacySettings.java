@@ -25,7 +25,7 @@ import java.util.Random;
  * @author Svyatoslav Hresyk 
  * {@hide} 
  */
-public final class PrivacySettings implements Parcelable {
+public final class PrivacySettings extends PrivacySettingsStub implements Parcelable {
     
     /**
      * Real value, provided by the unmodified Android framework.
