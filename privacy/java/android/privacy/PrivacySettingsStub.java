@@ -19,4 +19,10 @@ package android.privacy;
  * @author Simeon J Morgan 
  * {@hide} 
  */
-class PrivacySettingsStub {}
+class PrivacySettingsStub {
+    private final static boolean isStub = true;
+    
+    boolean isStub() {
+        return isStub;
+    }
+}

@@ -479,9 +479,11 @@ public final class PrivacyPersistenceAdapter {
             if (cacheResult != null) {
                 if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache hit for " + packageName);
                 //if the cached object is a stub, then it means that there is no privacy settings for that package, and null should be returned
-                if (cacheResult instanceof PrivacySettingsStub) {
+                if (cacheResult.isStub()) {
+                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:Cached result is a stub, return null:" + packageName);
                     return null;
                 } else {
+                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:Cached result is not a stub:" + packageName);
                     return (PrivacySettings)cacheResult;
                 }
             } else {
@@ -500,7 +502,7 @@ public final class PrivacyPersistenceAdapter {
         } catch (SQLiteException e) {
             Log.e(TAG, "getSettings - database could not be opened", e);
             closeIdleDatabase();
-            return privacySettings;
+            throw e;
         }
 
         Cursor cursor = null;
@@ -513,47 +515,64 @@ public final class PrivacyPersistenceAdapter {
                     new String[] { packageName }, null, null, null, null);
 
             if (cursor != null) {
-                if (cursor.getCount() > 1) {
-                    Log.w(TAG, "Multiple privacy settings found for package " + packageName);
-                }
-                if (cursor.moveToFirst()) {
-                    privacySettings = new PrivacySettings(cursor.getInt(0), cursor.getString(1),
-                            cursor.getInt(2), (byte) cursor.getShort(3), cursor.getString(4),
-                            (byte) cursor.getShort(5), cursor.getString(6),
-                            (byte) cursor.getShort(7), cursor.getString(8), cursor.getString(9),
-                            (byte) cursor.getShort(10), cursor.getString(11), cursor.getString(12),
-                            (byte) cursor.getShort(13), (byte) cursor.getShort(14),
-                            (byte) cursor.getShort(15), cursor.getString(16),
-                            (byte) cursor.getShort(17), cursor.getString(18),
-                            (byte) cursor.getShort(19), (byte) cursor.getShort(20),
-                            (byte) cursor.getShort(21), (byte) cursor.getShort(22),
-                            (byte) cursor.getShort(23), (byte) cursor.getShort(24),
-                            (byte) cursor.getShort(25), (byte) cursor.getShort(26),
-                            (byte) cursor.getShort(27), (byte) cursor.getShort(28),
-                            (byte) cursor.getShort(29), (byte) cursor.getShort(30),
-                            (byte) cursor.getShort(31), (byte) cursor.getShort(32),
-                            (byte) cursor.getShort(33), (byte) cursor.getShort(34), null,
-                            (byte) cursor.getShort(35), (byte) cursor.getShort(36),
-                            (byte) cursor.getShort(37), (byte) cursor.getShort(38),
-                            (byte) cursor.getShort(39), (byte) cursor.getShort(40),
-                            cursor.getString(41), (byte) cursor.getShort(42),
-                            (byte) cursor.getShort(43), (byte) cursor.getShort(44),
-                            (byte) cursor.getShort(45), (byte) cursor.getShort(46));
-
-                    // get allowed contacts IDs if necessary
-                    cursor = query(db, TABLE_ALLOWED_CONTACTS, new String[] { "contact_id" },
-                            "settings_id=?",
-                            new String[] { Integer.toString(privacySettings.get_id()) }, null,
-                            null, null, null);
-
-                    if (cursor != null && cursor.getCount() > 0) {
-                        int[] allowedContacts = new int[cursor.getCount()];
-                        while (cursor.moveToNext())
-                            allowedContacts[cursor.getPosition()] = cursor.getInt(0);
-                        privacySettings.setAllowedContacts(allowedContacts);
+                if (cursor.getCount() == 0) {
+                    // No settings are present: log that and do nothing
+                    Log.d(TAG, "PrivacyPersistenceAdapter:getSettingsfound for package " + packageName);
+                } else {
+                    if (cursor.getCount() > 1) {
+                        Log.w(TAG, "Multiple privacy settings found for package " + packageName);
+                    }
+    
+                    if (cursor.moveToFirst()) {
+                        privacySettings = new PrivacySettings(cursor.getInt(0), cursor.getString(1),
+                                cursor.getInt(2), (byte) cursor.getShort(3), cursor.getString(4),
+                                (byte) cursor.getShort(5), cursor.getString(6),
+                                (byte) cursor.getShort(7), cursor.getString(8), cursor.getString(9),
+                                (byte) cursor.getShort(10), cursor.getString(11), cursor.getString(12),
+                                (byte) cursor.getShort(13), (byte) cursor.getShort(14),
+                                (byte) cursor.getShort(15), cursor.getString(16),
+                                (byte) cursor.getShort(17), cursor.getString(18),
+                                (byte) cursor.getShort(19), (byte) cursor.getShort(20),
+                                (byte) cursor.getShort(21), (byte) cursor.getShort(22),
+                                (byte) cursor.getShort(23), (byte) cursor.getShort(24),
+                                (byte) cursor.getShort(25), (byte) cursor.getShort(26),
+                                (byte) cursor.getShort(27), (byte) cursor.getShort(28),
+                                (byte) cursor.getShort(29), (byte) cursor.getShort(30),
+                                (byte) cursor.getShort(31), (byte) cursor.getShort(32),
+                                (byte) cursor.getShort(33), (byte) cursor.getShort(34), null,
+                                (byte) cursor.getShort(35), (byte) cursor.getShort(36),
+                                (byte) cursor.getShort(37), (byte) cursor.getShort(38),
+                                (byte) cursor.getShort(39), (byte) cursor.getShort(40),
+                                cursor.getString(41), (byte) cursor.getShort(42),
+                                (byte) cursor.getShort(43), (byte) cursor.getShort(44),
+                                (byte) cursor.getShort(45), (byte) cursor.getShort(46));
+    
+                        // get allowed contacts IDs if necessary
+                        cursor = query(db, TABLE_ALLOWED_CONTACTS, new String[] { "contact_id" },
+                                "settings_id=?",
+                                new String[] { Integer.toString(privacySettings.get_id()) }, null,
+                                null, null, null);
+    
+                        if (cursor != null && cursor.getCount() > 0) {
+                            int[] allowedContacts = new int[cursor.getCount()];
+                            while (cursor.moveToNext())
+                                allowedContacts[cursor.getPosition()] = cursor.getInt(0);
+                            privacySettings.setAllowedContacts(allowedContacts);
+                        }
                     }
                 }
             }
+            
+            if (this.useCache) {
+                if (privacySettings != null) {
+                    settingsCache.put(packageName, privacySettings);
+                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache put for" + packageName);
+                } else {
+                    settingsCache.put(packageName, new PrivacySettingsStub());
+                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache stub put for" + packageName);
+                }
+            }
+            
         } catch (Exception e) {
             Log.e(TAG, "getSettings - failed to get settings for package: " + packageName, e);
         } finally {
@@ -563,17 +582,6 @@ public final class PrivacyPersistenceAdapter {
             sDbLock.readLock().unlock();
             if (LOG_LOCKING) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: ReadLock: (post)unlock");
             closeIdleDatabase();
-        }
-
-        
-        if (this.useCache) {
-            if (privacySettings != null) {
-                settingsCache.put(packageName, privacySettings);
-                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache put for" + packageName);
-            } else {
-                settingsCache.put(packageName, new PrivacySettingsStub());
-                if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache stub put for" + packageName);
-            }
         }
         
         return privacySettings;
