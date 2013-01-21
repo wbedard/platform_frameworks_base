@@ -76,9 +76,11 @@ public class KeyguardHostView extends KeyguardViewBase {
     private AppWidgetHost mAppWidgetHost;
     private AppWidgetManager mAppWidgetManager;
     private KeyguardWidgetPager mAppWidgetContainer;
+    private KeyguardWidgetPager mAppWidgetContainerHidden;
     private KeyguardSecurityViewFlipper mSecurityViewContainer;
     private KeyguardSelectorView mKeyguardSelectorView;
     private KeyguardTransportControlView mTransportControl;
+    private View mExpandChallengeView;
     private boolean mIsVerifyUnlockOnly;
     private boolean mEnableFallback; // TODO: This should get the value from KeyguardPatternView
     private SecurityMode mCurrentSecuritySelection = SecurityMode.Invalid;
@@ -204,8 +206,17 @@ public class KeyguardHostView extends KeyguardViewBase {
         // Grab instances of and make any necessary changes to the main layouts. Create
         // view state manager and wire up necessary listeners / callbacks.
         View deleteDropTarget = findViewById(R.id.keyguard_widget_pager_delete_target);
-        mAppWidgetContainer = (KeyguardWidgetPager) findViewById(R.id.app_widget_container);
+        if (Settings.System.getBoolean(getContext().getContentResolver(),
+                Settings.System.LOCKSCREEN_USE_WIDGET_CONTAINER_CAROUSEL, false)) {
+            mAppWidgetContainerHidden = (KeyguardWidgetPager) findViewById(R.id.app_widget_container);
+            mAppWidgetContainer = (KeyguardWidgetPager) findViewById(R.id.app_widget_container_carousel);
+        }
+        else {
+            mAppWidgetContainerHidden = (KeyguardWidgetPager) findViewById(R.id.app_widget_container_carousel);
+            mAppWidgetContainer = (KeyguardWidgetPager) findViewById(R.id.app_widget_container);
+        }
         mAppWidgetContainer.setVisibility(VISIBLE);
+        mAppWidgetContainerHidden.setVisibility(GONE);
         mAppWidgetContainer.setCallbacks(mWidgetCallbacks);
         mAppWidgetContainer.setDeleteDropTarget(deleteDropTarget);
         mAppWidgetContainer.setMinScale(0.5f);
@@ -251,7 +262,25 @@ public class KeyguardHostView extends KeyguardViewBase {
 
         showPrimarySecurityScreen(false);
         updateSecurityViews();
+
+        if (Settings.System.getBoolean(getContext().getContentResolver(),
+                Settings.System.LOCKSCREEN_LONGPRESS_CHALLENGE, false)) {
+            mExpandChallengeView = (View) findViewById(R.id.expand_challenge_handle);
+            if (mExpandChallengeView != null) {
+                mExpandChallengeView.setOnLongClickListener(mFastUnlockClickListener);
+            }
+        }
+
+        minimizeChallengeIfNeeded();
     }
+
+    private final OnLongClickListener mFastUnlockClickListener = new OnLongClickListener() {
+        @Override
+        public boolean onLongClick(View v) {
+            showNextSecurityScreenOrFinish(false);
+            return true;
+        }
+    };
 
     private int getDisabledFeatures(DevicePolicyManager dpm) {
         int disabledFeatures = DevicePolicyManager.KEYGUARD_DISABLE_FEATURES_NONE;
@@ -844,6 +873,15 @@ public class KeyguardHostView extends KeyguardViewBase {
 
         if (mViewStateManager != null) {
             mViewStateManager.showUsabilityHints();
+        }
+        minimizeChallengeIfNeeded();
+    }
+
+    private void minimizeChallengeIfNeeded() {
+        if (Settings.System.getBoolean(getContext().getContentResolver(), Settings.System.LOCKSCREEN_MINIMIZE_LOCKSCREEN_CHALLENGE, false)) {
+            if (mSlidingChallengeLayout != null) {
+                mSlidingChallengeLayout.fadeOutChallenge();
+            }
         }
     }
 

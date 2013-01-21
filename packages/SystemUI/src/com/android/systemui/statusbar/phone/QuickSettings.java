@@ -89,7 +89,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.internal.telephony.PhoneConstants;
-import com.android.systemui.aokp.AokpTarget;
+import com.android.systemui.aokp.AwesomeAction;
 
 import java.io.File;
 import java.io.InputStream;
@@ -130,6 +130,7 @@ class QuickSettings {
     private static final int LTE_TILE = 22;
     private static final int FAV_CONTACT_TILE = 23;
    // private static final int BT_TETHER_TILE = 23;
+    private static final int SOUND_STATE_TILE = 24;
 
     public static final String USER_TOGGLE = "USER";
     public static final String BRIGHTNESS_TOGGLE = "BRIGHTNESS";
@@ -156,6 +157,7 @@ class QuickSettings {
     public static final String TWOG_TOGGLE = "2G";
     public static final String LTE_TOGGLE = "LTE";
     public static final String FAV_CONTACT_TOGGLE = "FAVCONTACT";
+    public static final String SOUND_STATE_TOGGLE = "SOUNDSTATE";
 
     private static final String DEFAULT_TOGGLES = "default";
 
@@ -181,8 +183,6 @@ class QuickSettings {
     private TelephonyManager tm;
     private ConnectivityManager mConnService;
     private NfcAdapter mNfcAdapter;
-
-    private AokpTarget mAokpTarget;
 
     private BrightnessController mBrightnessController;
     private BluetoothController mBluetoothController;
@@ -237,6 +237,7 @@ class QuickSettings {
             toggleMap.put(TWOG_TOGGLE, TWOG_TILE);
             toggleMap.put(LTE_TOGGLE, LTE_TILE);
             toggleMap.put(FAV_CONTACT_TOGGLE, FAV_CONTACT_TILE);
+            toggleMap.put(SOUND_STATE_TOGGLE, SOUND_STATE_TILE);
             //toggleMap.put(BT_TETHER_TOGGLE, BT_TETHER_TILE);
         }
         return toggleMap;
@@ -263,8 +264,6 @@ class QuickSettings {
         mBluetoothState = new QuickSettingsModel.BluetoothState();
         mHandler = new Handler();
 
-        mAokpTarget = new AokpTarget(mContext);
-
         Resources r = mContext.getResources();
         mBatteryLevels = (LevelListDrawable) r.getDrawable(R.drawable.qs_sys_battery);
         mChargingBatteryLevels =
@@ -289,6 +288,7 @@ class QuickSettings {
                 null, null);
 
         new SettingsObserver(new Handler()).observe();
+        new SoundObserver(new Handler()).observe();
     }
 
     void setBar(PanelBar bar) {
@@ -781,7 +781,7 @@ class QuickSettings {
                 quick.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mAokpTarget.launchAction(mAokpTarget.ACTION_VIB);
+                        AwesomeAction.getInstance(mContext).launchAction(AwesomeAction.ACTION_VIB);
                         mModel.refreshVibrateTile();
                     }
                 });
@@ -809,7 +809,7 @@ class QuickSettings {
                 quick.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mAokpTarget.launchAction(mAokpTarget.ACTION_SILENT);
+                        AwesomeAction.getInstance(mContext).launchAction(AwesomeAction.ACTION_SILENT);
                         mModel.refreshSilentTile();
                     }
                 });
@@ -830,6 +830,34 @@ class QuickSettings {
                     }
                 });
                 break;
+            case SOUND_STATE_TILE:
+                quick = (QuickSettingsTileView)
+                        inflater.inflate(R.layout.quick_settings_tile, parent, false);
+                quick.setContent(R.layout.quick_settings_tile_sound_state, inflater);
+                quick.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        AwesomeAction.getInstance(mContext).launchAction(AwesomeAction.ACTION_SILENT_VIB);
+                        mModel.refreshSoundStateTile();
+                    }
+                });
+                quick.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View v) {
+                        startSettingsActivity(android.provider.Settings.ACTION_SOUND_SETTINGS);
+                        return true;
+                    }
+                });
+                mModel.addSoundStateTile(quick, new QuickSettingsModel.RefreshCallback() {
+                    @Override
+                    public void refreshView(QuickSettingsTileView view, State state) {
+                        TextView tv = (TextView) view.findViewById(R.id.sound_state_textview);
+                        tv.setCompoundDrawablesWithIntrinsicBounds(0, state.iconId, 0, 0);
+                        tv.setText(state.label);
+                        tv.setTextSize(1, mTileTextSize);
+                    }
+                });
+                break;
             case TORCH_TILE:
                 quick = (QuickSettingsTileView)
                         inflater.inflate(R.layout.quick_settings_tile, parent, false);
@@ -837,7 +865,7 @@ class QuickSettings {
                 quick.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mAokpTarget.launchAction(mAokpTarget.ACTION_TORCH);
+                        AwesomeAction.getInstance(mContext).launchAction(AwesomeAction.ACTION_TORCH);
                         mHandler.postDelayed(delayedRefresh, 1000);
                     }
                 });
@@ -1185,16 +1213,11 @@ class QuickSettings {
                         boolean gpsEnabled = Settings.Secure.isLocationProviderEnabled(
                                 mContext.getContentResolver(), LocationManager.GPS_PROVIDER);
                         TextView tv = (TextView) view.findViewById(R.id.location_textview);
-                        String newString = state.label;
-                        if ((newString == null) || (newString.equals(""))) {
-                            tv.setText(gpsEnabled ? R.string.quick_settings_gps_on_label
-                                    : R.string.quick_settings_gps_off_label);
-                            tv.setCompoundDrawablesWithIntrinsicBounds(0, gpsEnabled ?
-                                    R.drawable.ic_qs_gps_on : R.drawable.ic_qs_gps_off, 0, 0);
-                        } else {
-                            tv.setText(state.label);
-                            tv.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_qs_gps_locked, 0, 0);
-                        }
+                        tv.setText(gpsEnabled
+                                ? R.string.quick_settings_gps_on_label
+                                : R.string.quick_settings_gps_off_label);
+                        tv.setCompoundDrawablesWithIntrinsicBounds(0, gpsEnabled ?
+                                R.drawable.ic_qs_gps_on : R.drawable.ic_qs_gps_off, 0, 0);
                         tv.setTextSize(1, mTileTextSize);
                     }
                 });
@@ -1761,6 +1784,29 @@ class QuickSettings {
         @Override
         public void onChange(boolean selfChange) {
             updateSettings();
+        }
+    }
+
+    class SoundObserver extends ContentObserver {
+        SoundObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(Settings.Global
+                    .getUriFor(Settings.Global.MODE_RINGER),
+                    false, this);
+            mModel.refreshVibrateTile();
+            mModel.refreshSilentTile();
+            mModel.refreshSoundStateTile();
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            mModel.refreshVibrateTile();
+            mModel.refreshSilentTile();
+            mModel.refreshSoundStateTile();
         }
     }
 }
