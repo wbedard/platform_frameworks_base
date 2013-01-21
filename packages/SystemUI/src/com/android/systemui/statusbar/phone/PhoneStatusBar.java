@@ -100,7 +100,7 @@ import com.android.systemui.statusbar.policy.NetworkController;
 import com.android.systemui.statusbar.policy.NotificationRowLayout;
 import com.android.systemui.statusbar.policy.OnSizeChangedListener;
 import com.android.systemui.statusbar.policy.Prefs;
-import com.android.systemui.aokp.AokpTarget;
+import com.android.systemui.aokp.AwesomeAction;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -173,8 +173,6 @@ public class PhoneStatusBar extends BaseStatusBar {
 
     StatusBarWindowView mStatusBarWindow;
     PhoneStatusBarView mStatusBarView;
-
-    private AokpTarget mAokpTarget;
 
     int mPixelFormat;
     Object mQueueLock = new Object();
@@ -368,8 +366,6 @@ public class PhoneStatusBar extends BaseStatusBar {
     protected PhoneStatusBarView makeStatusBarView() {
         final Context context = mContext;
 
-        mAokpTarget = new AokpTarget(mContext);
-
         Resources res = context.getResources();
 
         updateDisplaySize(); // populates mDisplayMetrics
@@ -534,10 +530,12 @@ public class PhoneStatusBar extends BaseStatusBar {
         mSbBatteryController = (SbBatteryController)mStatusBarView.findViewById(R.id.battery_cluster);
         mNetworkController = new NetworkController(mContext);
         mBluetoothController = new BluetoothController(mContext);
-        final SignalClusterView signalCluster =
-                (SignalClusterView)mStatusBarView.findViewById(R.id.signal_cluster);
 
+        SignalClusterView signalCluster = (SignalClusterView)mStatusBarView.findViewById(R.id.signal_cluster);
+        mNetworkController.addSignalCluster(signalCluster);
+        signalCluster.setNetworkController(mNetworkController);
 
+        signalCluster = (SignalClusterView)mStatusBarView.findViewById(R.id.signal_cluster_alt);
         mNetworkController.addSignalCluster(signalCluster);
         signalCluster.setNetworkController(mNetworkController);
 
@@ -2219,7 +2217,7 @@ public class PhoneStatusBar extends BaseStatusBar {
             public void run() {
                     doubleClickCounter = 0;
                     animateCollapsePanels();
-                    mAokpTarget.launchAction(mClockActions[shortClick]);
+                    AwesomeAction.getInstance(mContext).launchAction(mClockActions[shortClick]);
             }
         };
 
@@ -2236,7 +2234,7 @@ public class PhoneStatusBar extends BaseStatusBar {
                     mHandler.removeCallbacks(DelayShortPress);
                     vibrate();
                     animateCollapsePanels();
-                    mAokpTarget.launchAction(mClockActions[doubleClick]);
+                    AwesomeAction.getInstance(mContext).launchAction(mClockActions[doubleClick]);
                     mHandler.postDelayed(ResetDoubleClickCounter, 50);
                 } else {
                     doubleClickCounter = doubleClickCounter + 1;
@@ -2246,7 +2244,7 @@ public class PhoneStatusBar extends BaseStatusBar {
             } else {
                 vibrate();
                 animateCollapsePanels();
-                mAokpTarget.launchAction(mClockActions[shortClick]);
+                AwesomeAction.getInstance(mContext).launchAction(mClockActions[shortClick]);
             }
 
         }
@@ -2256,7 +2254,7 @@ public class PhoneStatusBar extends BaseStatusBar {
         @Override
         public boolean onLongClick(View v) {
             animateCollapsePanels();
-            mAokpTarget.launchAction(mClockActions[longClick]);
+            AwesomeAction.getInstance(mContext).launchAction(mClockActions[longClick]);
             return true;
         }
     };
