@@ -12,6 +12,7 @@
 
 package android.privacy;
 
+import android.R.integer;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
@@ -19,6 +20,8 @@ import android.os.RemoteException;
 import android.util.Log;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * PrivacySettingsManager's counterpart running in the system process, which
@@ -45,7 +48,12 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
     private boolean notificationsEnabled;
     private boolean bootCompleted;
 
-    private static final double VERSION = 1.51;
+    static final double API_VERSION = 1.51;
+    static final double MOD_VERSION = 1.0;
+    static final String MOD_DETAILS = "OpenPDroid 1.0 by FFU5y, Mateor, wbedard; forked from PDroid 2.0\n" +
+    		"PDroid 2.0 by CollegeDev; forked from PDroid\n" +
+    		"PDroid by Syvat's\n" +
+    		"Additional contributions by Pastime1971";
 
     /**
      * @hide - this should be instantiated through Context.getSystemService
@@ -110,11 +118,7 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
         }
         return result;
     }
-
-    public double getVersion() {
-        return VERSION;
-    }
-
+    
     public void notification(final String packageName, final byte accessMode,
             final String dataType, final String output) {
         if (bootCompleted && notificationsEnabled && sendNotifications) {
@@ -144,6 +148,13 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
     }
 
     public void setBootCompleted() {
+        try {
+            StackTraceElement[] elements = new Throwable().getStackTrace();
+            String callerClassName = elements[1].getClassName();
+            Log.d(TAG, "PrivacySettingsManagerService:setBootCompleted: called by " + callerClassName);
+        } catch (Exception e) {
+            Log.d(TAG, "PrivacySettingsManagerService:setBootCompleted: Exception while obtaining caller class name");
+        }
         bootCompleted = true;
     }
 
@@ -236,10 +247,13 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
 	}
 	
 	
-	public static String DEBUG_FLAG_SEND_NOTIFICATIONS = "sendNotifications";
-	public static String DEBUG_FLAG_USE_CACHE = "useCache";
-	public static String DEBUG_FLAG_CACHE_SIZE = "cacheSize";
-	public static String DEBUG_FLAG_OPEN_AND_CLOSE_DB = "openAndCloseDb";
+	public static final String DEBUG_FLAG_SEND_NOTIFICATIONS = "sendNotifications";
+	public static final String DEBUG_FLAG_USE_CACHE = "useCache";
+	public static final String DEBUG_FLAG_CACHE_SIZE = "cacheSize";
+	public static final String DEBUG_FLAG_OPEN_AND_CLOSE_DB = "openAndCloseDb";
+	
+	public static final int DEBUG_FLAG_TYPE_INTEGER = 0;
+	public static final int DEBUG_FLAG_TYPE_BOOLEAN = 1;
 	
     public void setDebugFlagInt(String flagName, int value) throws RemoteException {
         checkCallerCanWriteOrThrow();
@@ -284,4 +298,13 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
             throw new RemoteException();
         }
 	}
+    
+    public Map getDebugFlags() {
+        Map<String, Integer> debugFlags = new HashMap<String, Integer>();
+        debugFlags.put(DEBUG_FLAG_CACHE_SIZE, DEBUG_FLAG_TYPE_INTEGER);
+        debugFlags.put(DEBUG_FLAG_OPEN_AND_CLOSE_DB, DEBUG_FLAG_TYPE_BOOLEAN);
+        debugFlags.put(DEBUG_FLAG_SEND_NOTIFICATIONS, DEBUG_FLAG_TYPE_BOOLEAN);
+        debugFlags.put(DEBUG_FLAG_USE_CACHE, DEBUG_FLAG_TYPE_BOOLEAN);
+        return debugFlags;
+    }
 }

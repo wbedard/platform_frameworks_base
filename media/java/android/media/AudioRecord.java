@@ -41,6 +41,7 @@ import android.os.Process;
 import android.os.ServiceManager;
 
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 ///////////////////////////////////////////
@@ -345,15 +346,15 @@ public class AudioRecord
      * @return IS_ALLOWED (-1) if all packages allowed, IS_NOT_ALLOWED(-2) if one of these packages not allowed, GOT_ERROR (-3) if something went wrong
      */
     private int checkIfPackagesAllowed(){
-    	try{
+    	try {
     		//boolean isAllowed = false;
-    		if(pSetMan != null){
+    		if(pSetMan != null) {
     			PrivacySettings pSet = null;
 	    		String[] package_names = getPackageName();
 	    		int uid = Process.myUid();
 	    		if(package_names != null){
 	    		
-		        	for(int i=0;i < package_names.length; i++){
+		        	for (int i=0;i < package_names.length; i++) {
 		        		pSet = pSetMan.getSettings(package_names[i], uid);
 		        		if(pSet != null && (pSet.getRecordAudioSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
 		        			return IS_NOT_ALLOWED;
@@ -361,18 +362,17 @@ public class AudioRecord
 		        		pSet = null;
 		        	}
 			    	return IS_ALLOWED;
-	    		}
-	    		else{
+	    		} else {
 	    			Log.e(PRIVACY_TAG,"return GOT_ERROR, because package_names are NULL");
 	    			return GOT_ERROR;
 	    		}
-    		}
-    		else{
+    		} else {
     			Log.e(PRIVACY_TAG,"return GOT_ERROR, because pSetMan is NULL");
     			return GOT_ERROR;
     		}
-    	}
-    	catch (Exception e){
+    	} catch (PrivacyServiceException e) {
+    	    return GOT_ERROR;
+    	} catch (Exception e) {
     		e.printStackTrace();
     		Log.e(PRIVACY_TAG,"Got exception in checkIfPackagesAllowed");
     		return GOT_ERROR;
@@ -666,20 +666,26 @@ public class AudioRecord
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     	//BEGIN PRIVACY
     	//now check if everything was ok in constructor!
-    	if(!privacyMode){
-    		initiate();
-    	}
+        if(!privacyMode){
+            initiate();
+        }
         if ((mState != STATE_INITIALIZED) || (checkIfPackagesAllowed() == IS_NOT_ALLOWED)) { //If applicaton is not allowed -> throw exception!
             dataAccess(false);
-	    String packageName[] = getPackageName();
-	    if(packageName != null)
-	    	pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));  
-            throw(new IllegalStateException("startRecording() called on an "+"uninitialized AudioRecord."));
+            String packageName[] = getPackageName();
+            if(packageName != null) {
+                try {
+                    pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+                } catch (PrivacyServiceException e) {}
+                throw(new IllegalStateException("startRecording() called on an "+"uninitialized AudioRecord."));
+            }
         }
         dataAccess(true);
-	String packageName[] = getPackageName();
-	if(packageName != null)
-		pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid())); 
+        String packageName[] = getPackageName();
+        if(packageName != null) {
+            try {
+                pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+            } catch (PrivacyServiceException e) {}
+        }
         //END PRIVACY
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

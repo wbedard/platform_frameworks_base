@@ -44,6 +44,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 ///////////////////////////////////////////////////////
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 
@@ -288,13 +289,17 @@ public class Camera {
 	    		int uid = Process.myUid();
 	    		if(package_names != null){
 	    		
-		        	for(int i=0;i < package_names.length; i++){
-		        		pSet = pSetMan.getSettings(package_names[i], uid);
-		        		if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
-		        			return IS_NOT_ALLOWED;
-		        		}
-		        		pSet = null;
-		        	}
+	    		    try {
+        	        	for(int i=0;i < package_names.length; i++){
+        	        		pSet = pSetMan.getSettings(package_names[i], uid);
+        	        		if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
+        	        			return IS_NOT_ALLOWED;
+        	        		}
+        	        		pSet = null;
+        	        	}
+	    		    } catch (PrivacyServiceException e) {
+	    		        return IS_NOT_ALLOWED;
+	    		    }
 			    	return IS_ALLOWED;
 	    		}
 	    		else{
@@ -929,26 +934,34 @@ public class Camera {
 
         @Override
         public void handleMessage(Message msg) {
-	    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //BEGIN PRIVACY
 
-	    boolean access = true;
-	    if(!privacyMode){
-		initiate();
-	    }
-	    String packageName[] = getPackageName();
-	    if(checkIfPackagesAllowed() == IS_NOT_ALLOWED){
-		access = false;
-		dataAccess(false);
-		if(packageName != null)
-			pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
-	    }
-	    else{
-		dataAccess(true);
-		if(packageName != null)
-			pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
-	    }
-
+    	    boolean access = true;
+    	    if(!privacyMode){
+    	        initiate();
+    	    }
+    	    
+    	    String packageName[] = getPackageName();
+    	    try {
+        	    if(checkIfPackagesAllowed() == IS_NOT_ALLOWED){
+            		access = false;
+            		dataAccess(false);
+            		if(packageName != null)
+            			pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+        	    } else {
+            		dataAccess(true);
+            		if(packageName != null)
+            			pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+        	    }
+    	    } catch (PrivacyServiceException e) {
+                access = false;
+                dataAccess(false);
+                if(packageName != null)
+                    try {
+                        pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+                    } catch (PrivacyServiceException ie) {}
+    	    }
 
             switch(msg.what) {
             case CAMERA_MSG_SHUTTER:
