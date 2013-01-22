@@ -200,6 +200,7 @@ public final class MicrophoneInputStream extends InputStream {
             if(packageName != null && pSetMan != null) {
                 pSetMan.notification(packageName[0], PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null);
             }
+            break;
         case GOT_ERROR:
             dataAccess(false);
             if(packageName != null && pSetMan != null) {

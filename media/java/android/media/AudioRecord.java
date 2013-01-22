@@ -29,7 +29,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-////////////////////////////////////////////
+//BEGIN privacy-added
 import android.app.ActivityThread;
 import android.app.Application;
 import android.content.Context;
@@ -44,7 +44,7 @@ import android.privacy.IPrivacySettingsManager;
 import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
-///////////////////////////////////////////
+//END privacy-added
 
 /**
  * The AudioRecord class manages the audio resources for Java applications

@@ -49,7 +49,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	@Override
 	public boolean getMobileDataEnabled() {
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if(pSetMan != null && settings != null && settings.getForceOnlineState() == PrivacySettings.REAL){
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
 	            return true;
@@ -63,8 +63,12 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return super.getMobileDataEnabled();
 	        }
 	    } catch (PrivacyServiceException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return true;
+	    } catch (NullPointerException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return true;
 	    }
 			
 	}
@@ -72,7 +76,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	@Override
 	public void setMobileDataEnabled(boolean enabled) {
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if (settings == null || settings.getSwitchConnectivitySetting() != PrivacySettings.REAL) {
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_SWITCH_CONNECTIVITY, null);
 	            super.setMobileDataEnabled(enabled);  
@@ -81,8 +85,11 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            //do nothing
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_SWITCH_CONNECTIVITY, null);
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+        }
 	}
 	
 	@Override
@@ -90,7 +97,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
         NetworkInfo output[] =  {new NetworkInfo(TYPE_MOBILE, 0, "MOBILE", "CONNECTED")};
 
 	    try {
-    		PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+    		PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
     		
     		if (settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
                 output[0].setIsAvailable(true); 
@@ -105,9 +112,13 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
     			return output;
     		}
 	    } catch (PrivacyServiceException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
             return output;
-	    }		
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }		
 	}
 	
 	@Override
@@ -115,23 +126,27 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	    NetworkInfo output =  new NetworkInfo(TYPE_MOBILE, 0, "MOBILE", "CONNECTED");
 
 	    try {
-    		PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+    		PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
     		if (settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
                 output.setIsAvailable(true);
                 output.setState(NetworkInfo.State.CONNECTED);
-                pSetMan.notification(context.getPackageName(),-1, PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null, null);  
+                pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
                 return output;
             } else if (settings == null || settings.getNetworkInfoSetting() == PrivacySettings.REAL) {
-                pSetMan.notification(context.getPackageName(),-1, PrivacySettings.REAL, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null, null); 
+                pSetMan.notification(context.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null); 
                 return super.getNetworkInfo(networkType);
     		} else {
-    			pSetMan.notification(context.getPackageName(),-1, PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null, null);  
+    			pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
     			return output;
     		}
 	    } catch (PrivacyServiceException e) {
-	        pSetMan.notification(context.getPackageName(),-1, PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null, null);  
-            return output;	        
-	    }
+            Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
+	        pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
+            return output;        
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }
 			
 	}
 	
@@ -142,7 +157,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	public NetworkInfo getActiveNetworkInfoForUid(int uid) {
 	    NetworkInfo output =  new NetworkInfo(TYPE_MOBILE, 0, "MOBILE", "UNKNOWN");
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if (settings != null && settings.getForceOnlineState() == PrivacySettings.REAL){
 	            output.setIsAvailable(true);
 	            output.setState(NetworkInfo.State.CONNECTED);
@@ -156,9 +171,13 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return output;
 	        }
 	    } catch (PrivacyServiceException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return output;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }
 	}
 	
 	@Override
@@ -166,7 +185,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	    NetworkInfo output =  new NetworkInfo(TYPE_MOBILE, 0, "MOBILE", "UNKNOWN");
 	    
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if (settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
 	            output.setIsAvailable(true);
 	            output.setState(NetworkInfo.State.CONNECTED);
@@ -180,9 +199,13 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return output;
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return output;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }
 	}
 	
 	@Override
@@ -190,7 +213,7 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	    LinkProperties output = new LinkProperties();
 
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 
 	        if (settings == null || settings.getNetworkInfoSetting() == PrivacySettings.REAL) {
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null); 
@@ -200,16 +223,20 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return output;
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return output;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }
 	}
 	
 	public LinkProperties getActiveLinkProperties() { //also for prevent getting device IP
 	    LinkProperties output = new LinkProperties();
 
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if (settings == null || settings.getNetworkInfoSetting() == PrivacySettings.REAL) {
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null); 
 	            return super.getActiveLinkProperties();
@@ -218,15 +245,19 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return output;
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return output;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return output;
+        }
 	}
 	
 	@Override
 	public boolean requestRouteToHost(int networkType, int hostAddress){
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 	        if (settings != null || settings.getForceOnlineState() == PrivacySettings.REAL) {
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
 	            return true;
@@ -238,15 +269,19 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return false;
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return true;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return true;
+        }
 	}
 	
 	@Override
 	public boolean requestRouteToHostAddress(int networkType, InetAddress hostAddress){
 	    try {
-	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName(), Binder.getCallingUid());
+	        PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
 
 	        if (settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
 	            pSetMan.notification(context.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);  
@@ -259,8 +294,12 @@ public class PrivacyConnectivityManager extends ConnectivityManager{
 	            return false;
 	        }
 	    } catch (PrivacyServiceException e) {
+	        Log.e(P_TAG, "PrivacyConnectivityManager: PrivacyServiceException occurred", e);
 	        pSetMan.notification(context.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);
 	        return true;
-	    }
+        } catch (NullPointerException e) {
+            Log.e(P_TAG, "PrivacyConnectivityManager: NullPointerException occurred - probably privacy service", e);
+            return true;
+        }
 	}
 }

@@ -48,13 +48,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-///////////////////////////////////////////////////
+//BEGIN privacy-added
 import android.privacy.IPrivacySettingsManager;
 import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 import android.telephony.TelephonyManager;
-///////////////////////////////////////////////////
+//END privacy-added
 
 
 /**
@@ -1442,7 +1442,7 @@ public class Instrumentation {
                     } catch (PrivacyServiceException e) {
                         Log.e(TAG,"PDroid:Instrumentation:execStartActivity: PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_PHONE_CALL, null);
                     }
                 }
 
@@ -1604,7 +1604,7 @@ public class Instrumentation {
                     } catch (PrivacyServiceException e) {
                         Log.e(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: PrivacyServiceException occurred", e);
                         allowCallIntents = false;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_PHONE_CALL, null);
                     }
                 }
 
@@ -1742,14 +1742,13 @@ public class Instrumentation {
                         } else {
                             Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call denied: Settings deny " + who.getPackageName());
                             // No settings = allowed; any phone call setting but real == disallowed
-    
                             allowIntent = false;
                             mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
                         }
                     } catch (PrivacyServiceException e) {
                         Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_PHONE_CALL, null);
                     }
                 }
                 
@@ -1896,7 +1895,7 @@ public class Instrumentation {
                     } catch (PrivacyServiceException e) {
                         Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.ERROR, PrivacySettings.DATA_PHONE_CALL, null);
                     }
                 }
                 
