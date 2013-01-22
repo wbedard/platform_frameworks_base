@@ -82,6 +82,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_DEVICE_ID, output);
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = "";
         }
         return output;
     }
@@ -105,6 +108,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LINE_1_NUMBER, output);
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = "";
         }
         return output;
     }
@@ -129,6 +135,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LINE_1_NUMBER, output);
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = "";
         }
         return output;
     }
@@ -155,7 +164,10 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
                 output = new ArrayList<NeighboringCellInfo>();
                 output_label = "[empty list of cells]";
             }
-        } catch (PrivacyServiceException e) {}
+        } catch (PrivacyServiceException e) {
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+        }
         return output;
     }
 
@@ -201,6 +213,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_CURRENT, null);            
             return ""; // can only be empty            
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            return "";
         }
     }
 
@@ -246,6 +261,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_NETWORK_INFO_SIM, null);            
             return ""; // can only be empty
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            return "";
         }
     }
 
@@ -268,8 +286,11 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_SIM_SERIAL, output);            
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = "";
         }
-        //        Log.d(TAG, "getSimSerialNumber - " + context.getPackageName() + " (" + Binder.getCallingUid() + ") output: " + output);
+
         return output;
     }
 
@@ -292,6 +313,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_SUBSCRIBER_ID, output);            
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = "";
         }
         return output;
     }
@@ -347,6 +371,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_NETWORK, null);
             return null;
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            return null;
         }
     }
 
@@ -370,7 +397,8 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
             }
         } catch (PrivacyServiceException e){
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_DEVICE_ID, output);
-            return "";
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
         }
         
         return output;
@@ -393,10 +421,17 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
                 output = super.getCompleteVoiceMailNumber();
                 pSetMan.notification(packageName, PrivacySettings.REAL, PrivacySettings.DATA_LINE_1_NUMBER, output);
             }
-        } catch (Exception e){
-            output = ""; // can be empty, custom or random
+        } catch (PrivacyServiceException e){
+            output = null;
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LINE_1_NUMBER, output);
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output = null;
+        } catch (Exception e) {
+            Log.e(TAG, "PrivacyTelphonyManager:Exception occurred", e);
+            output = null;
         }
+
         return output;
     }
     //all types for better overview, based on ics 4.0.4
@@ -522,6 +557,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
         } catch (PrivacyServiceException e) {
             output[0] = "";
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_SUBSCRIBER_ID, output[0]);            
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
+            output[0] = "";
         }
         return output;
     }
@@ -540,6 +578,9 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
                 output = new ArrayList<CellInfo>();
             }
         } catch (PrivacyServiceException e) {
+            output = new ArrayList<CellInfo>();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyTelphonyManager:NullPointerException: probably privacy service", e);
             output = new ArrayList<CellInfo>();
         }
         return output;

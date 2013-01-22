@@ -72,7 +72,11 @@ public final class PrivacyLocationManager extends LocationManager {
         } catch (PrivacyServiceException e) {
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_GPS, null);
             return false;
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyLocationManager:addNmeaListener: NullPointerException: probably privacy service", e);
+            return false;
         }
+        
         return super.addNmeaListener(listener);
     }
 
@@ -161,6 +165,8 @@ public final class PrivacyLocationManager extends LocationManager {
             } else { // including GPS and passive providers
                 pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_GPS, null);
             }
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyLocationManager:getLastKnownLocationString: NullPointerException: probably privacy service", e);
         }
         
         return output;
@@ -205,7 +211,10 @@ public final class PrivacyLocationManager extends LocationManager {
             } else {
                 output = super.getProvider(name);
             }
-        } catch (PrivacyServiceException e) {}
+        } catch (PrivacyServiceException e) {
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyLocationManager:getProvider: NullPointerException: probably privacy service", e);
+        }
             
         return output;
     }
@@ -255,6 +264,9 @@ public final class PrivacyLocationManager extends LocationManager {
                 output = super.isProviderEnabled(provider);
             }
         } catch (PrivacyServiceException e) {
+            output = false;
+        } catch (NullPointerException e) {
+            Log.e(TAG, "PrivacyLocationManager:inProviderEnabled: NullPointerException: probably privacy service", e);
             output = false;
         }
 
@@ -474,6 +486,9 @@ public final class PrivacyLocationManager extends LocationManager {
                 } else { // including GPS and passive providers
                     pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_GPS, null);
                 }
+            } catch (NullPointerException e) {
+                Log.e(TAG, "PrivacyLocationManager:requestLocationUpdates: NullPointerException: probably privacy service", e);
+                output = false;
             }
             
             return output;
