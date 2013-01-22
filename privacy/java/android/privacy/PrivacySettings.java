@@ -27,11 +27,17 @@ import java.util.Random;
  */
 public final class PrivacySettings extends PrivacySettingsStub implements Parcelable {
     
-    private final static boolean isStub = false;
+    // **SM: to remove
+    /*private final static boolean isStub = false;
     
     boolean isStub() {
         return isStub;
-    }
+    }*/
+
+    /**
+     * Error occurred while obtaining the setting
+     */
+    public static final byte ERROR = 4;
     
     /**
      * Real value, provided by the unmodified Android framework.
@@ -579,7 +585,7 @@ public final class PrivacySettings extends PrivacySettingsStub implements Parcel
         }
         return deviceId;
     }
-
+    
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
     }

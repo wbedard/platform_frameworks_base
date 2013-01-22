@@ -12,6 +12,7 @@
 
 package android.privacy;
 import android.privacy.PrivacySettings;
+import java.util.Map;
 
 /** {@hide} */
 interface IPrivacySettingsManager
@@ -23,7 +24,6 @@ interface IPrivacySettingsManager
     void registerObservers();
     void addObserver(String packageName);
     boolean purgeSettings();
-    double getVersion();
     boolean setEnabled(boolean enable);
     boolean setNotificationsEnabled(boolean enable);
     void setBootCompleted();
@@ -31,4 +31,7 @@ interface IPrivacySettingsManager
     int getDebugFlagInt(String flagName);
     void setDebugFlagBool(String flagName, boolean value);
     boolean getDebugFlagBool(String flagName);
+   	Map getDebugFlags();
+   	
+   	   	
 }

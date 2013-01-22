@@ -26,6 +26,7 @@ import java.lang.IllegalStateException;
 
 //BEGIN PRIVACY
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 
@@ -132,13 +133,17 @@ public final class MicrophoneInputStream extends InputStream {
 	    		int uid = Process.myUid();
 	    		if(package_names != null){
 	    		
-		        	for(int i=0;i < package_names.length; i++){
-		        		pSet = pSetMan.getSettings(package_names[i], uid);
-		        		if(pSet != null && (pSet.getRecordAudioSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
-		        			return IS_NOT_ALLOWED;
-		        		}
-		        		pSet = null;
-		        	}
+	    		    try {
+    		        	for(int i=0;i < package_names.length; i++){
+    		        		pSet = pSetMan.getSettings(package_names[i], uid);
+    		        		if(pSet != null && (pSet.getRecordAudioSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
+    		        			return IS_NOT_ALLOWED;
+    		        		}
+    		        		pSet = null;
+    		        	}
+	    		    } catch (PrivacyServiceException e) {
+	    		        return IS_NOT_ALLOWED;
+	    		    }
 			    	return IS_ALLOWED;
 	    		}
 	    		else{
@@ -195,13 +200,17 @@ public final class MicrophoneInputStream extends InputStream {
 		dataAccess(false);
 		String packageName[] = getPackageName();
 		if(packageName != null)
-			pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+		    try {
+		        pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+		    } catch (PrivacyServiceException e) {}
 		throw new IOException("AudioRecord constructor failed - busy?");
 	}
 	dataAccess(true);
 	String packageName[] = getPackageName();
 	if(packageName != null)
-		pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid())); 
+	    try {
+	        pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null, pSetMan.getSettings(packageName[0], Process.myUid()));
+	    } catch (PrivacyServiceException e) {}
  	//END PRIVACY
    	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

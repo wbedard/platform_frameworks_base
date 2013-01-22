@@ -39,6 +39,7 @@ import android.content.Context;
 import java.util.Random;
 
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 ///////////////////////////////////////////
@@ -54,7 +55,7 @@ import android.privacy.PrivacySettingsManager;
  *
  * <pre>MediaRecorder recorder = new MediaRecorder();
  * recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
- * recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+ * recorder.setOutputFormat(MediaRecorder.OutputFormat.T    HREE_GPP);
  * recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
  * recorder.setOutputFile(PATH_NAME);
  * recorder.prepare();
@@ -1086,8 +1087,9 @@ public class MediaRecorder
     		case STATE_RECORD_AUDIO:
 				if(checkIfPackagesAllowed(MODE_RECORD_AUDIO) == IS_NOT_ALLOWED /* || checkIfPackagesAllowed(MODE_RECORD_BOTH) == IS_NOT_ALLOWED*/){
 					String x[] = getPackageName();
-					if(x != null && x.length > 0)
-						pSetMan.notification(x[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null, null);
+					if(x != null && x.length > 0) {
+					    pSetMan.notification(x[0], PrivacySettings.EMPTY, PrivacySettings.DATA_RECORD_AUDIO, null);
+					}
 					pRunner = new PrivacyRunner();
 					//here wo do not need to exchange the path or filedescriptor, because we can interrupt very quick!
 					pRunner.setDelay(50); // try very low value
@@ -1114,8 +1116,9 @@ public class MediaRecorder
     		case STATE_RECORD_BOTH:
 				if(checkIfPackagesAllowed(MODE_RECORD_BOTH) == IS_NOT_ALLOWED){
 					String x[] = getPackageName();
-					if(x != null && x.length > 0)
-						pSetMan.notification(x[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, null);
+					if(x != null && x.length > 0) {
+					    pSetMan.notification(x[0], PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
+					}
 					if(mPath != null){
 						//now overwrite path
 						mPath = getPrivacyPath();
@@ -1137,9 +1140,11 @@ public class MediaRecorder
 		//END PRIVACY
 	    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		String packageName[] = getPackageName();
+		
+		// **SM: Need to verify this code
 		if(!skip){
 			if (ACTUAL_STATE == STATE_RECORD_BOTH && packageName != null && packageName.length > 0) {
-				pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, null);
+			    pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, null);
 			} else if (packageName != null && packageName.length > 0) {
 				pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_RECORD_AUDIO, null, null);
 			}

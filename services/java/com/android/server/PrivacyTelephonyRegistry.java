@@ -11,6 +11,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 import android.telephony.CellInfo;
@@ -255,14 +256,24 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
 	
 	
 	private boolean isPackageAllowed(int PERMISSION, String packageName){
-		PrivacySettings settings = pSetMan.getSettings(packageName, Process.myUid());
-		if(settings == null) return false;
+	    PrivacySettings settings;
+	    try {
+	        settings = pSetMan.getSettings(packageName);
+	    } catch (PrivacyServiceException e) {
+	        return false;
+	    }
+	    
+	    // Default is to allow access if no settings are present
+		if(settings == null) return true;
+		
 		switch(PERMISSION){
 			case PERMISSION_CELL_LOCATION:
-				if(((settings.getLocationNetworkSetting() != PrivacySettings.REAL) || (settings.getLocationGpsSetting() != PrivacySettings.REAL)))
+			    if(settings.getLocationNetworkSetting() != PrivacySettings.REAL) {
+				//if(((settings.getLocationNetworkSetting() != PrivacySettings.REAL) || (settings.getLocationGpsSetting() != PrivacySettings.REAL)))
 					return false;
-				else 
+			    } else { 
 					return true;
+			    }
 			case PERMISSION_CELL_INFO:
 				if(settings.getLocationNetworkSetting() != PrivacySettings.REAL)
 					return false;
