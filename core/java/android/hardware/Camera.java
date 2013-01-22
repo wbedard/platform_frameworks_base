@@ -283,38 +283,31 @@ public class Camera {
     private int checkIfPackagesAllowed(){
     	try{
     		//boolean isAllowed = false;
-    		if(pSetMan != null){
-    			PrivacySettings pSet = null;
-	    		String[] package_names = getPackageName();
-	    		int uid = Process.myUid();
-	    		if(package_names != null){
-	    		
-	    		    try {
-        	        	for(int i=0;i < package_names.length; i++){
-        	        		pSet = pSetMan.getSettings(package_names[i], uid);
-        	        		if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
-        	        			return IS_NOT_ALLOWED;
-        	        		}
-        	        		pSet = null;
-        	        	}
-	    		    } catch (PrivacyServiceException e) {
-	    		        return IS_NOT_ALLOWED;
-	    		    }
-			    	return IS_ALLOWED;
-	    		}
-	    		else{
-	    			Log.e(PRIVACY_TAG,"return GOT_ERROR, because package_names are NULL");
-	    			return GOT_ERROR;
-	    		}
+    		if (pSetMan != null) {
+                Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: return GOT_ERROR, because pSetMan is NULL");
+                return GOT_ERROR;
     		}
-    		else{
-    			Log.e(PRIVACY_TAG,"return GOT_ERROR, because pSetMan is NULL");
-    			return GOT_ERROR;
+    		String[] package_names = getPackageName();
+    		if (package_names == null) {
+                Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: return GOT_ERROR, because package_names are NULL");
+                return GOT_ERROR;
     		}
-    	}
-    	catch (Exception e){
-    		e.printStackTrace();
-    		Log.e(PRIVACY_TAG,"Got exception in checkIfPackagesAllowed");
+			PrivacySettings pSet = null;
+		    try {
+	        	for(int i=0;i < package_names.length; i++){
+	        		pSet = pSetMan.getSettings(package_names[i]);
+	        		if(pSet != null && (pSet.getCameraSetting() != PrivacySettings.REAL)){ //if pSet is null, we allow application to access to mic
+	        			return IS_NOT_ALLOWED;
+	        		}
+	        		pSet = null;
+	        	}
+		    } catch (PrivacyServiceException e) {
+		        Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed:return GOT_ERROR, because PrivacyServiceException occurred");
+		        return GOT_ERROR;
+		    }
+	    	return IS_ALLOWED;
+    	} catch (Exception e){
+    		Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: Got exception in checkIfPackagesAllowed", e);
     		return GOT_ERROR;
     	}
     }
@@ -937,30 +930,42 @@ public class Camera {
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             //BEGIN PRIVACY
 
-    	    boolean access = true;
+    	    boolean access = false;
     	    if(!privacyMode){
     	        initiate();
     	    }
-    	    
+
     	    String packageName[] = getPackageName();
     	    try {
-        	    if(checkIfPackagesAllowed() == IS_NOT_ALLOWED){
-            		access = false;
-            		dataAccess(false);
-            		if(packageName != null)
-            			pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
-        	    } else {
-            		dataAccess(true);
-            		if(packageName != null)
-            			pSetMan.notification(packageName[0], 0, PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
-        	    }
-    	    } catch (PrivacyServiceException e) {
-                access = false;
-                dataAccess(false);
-                if(packageName != null)
-                    try {
-                        pSetMan.notification(packageName[0], 0, PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null, pSetMan.getSettings(packageName[0], Process.myUid()));
-                    } catch (PrivacyServiceException ie) {}
+    	        switch (checkIfPackagesAllowed()) {
+    	        case IS_ALLOWED:
+    	            access = true;
+    	            dataAccess(true);
+    	            if(packageName != null && pSetMan != null) {
+    	                pSetMan.notification(packageName[0], PrivacySettings.REAL, PrivacySettings.DATA_CAMERA, null);
+    	            }
+    	            break;
+    	        case GOT_ERROR:
+    	            access = false;
+    	            dataAccess(false);
+    	            if(packageName != null && pSetMan != null) {
+    	                pSetMan.notification(packageName[0], PrivacySettings.ERROR, PrivacySettings.DATA_CAMERA, null);
+    	            }
+    	            break;
+    	        default:
+    	            access = false;
+    	            dataAccess(false);
+    	            if(packageName != null && pSetMan != null) {
+    	                pSetMan.notification(packageName[0], PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
+    	            }
+    	            break;
+    	        }
+    	    } catch (Exception e) {
+    	        access = false;
+    	        dataAccess(false);
+    	        if(packageName != null && pSetMan != null) {
+    	            pSetMan.notification(packageName[0], PrivacySettings.EMPTY, PrivacySettings.DATA_CAMERA, null);
+    	        }
     	    }
 
             switch(msg.what) {
@@ -1313,7 +1318,7 @@ public class Camera {
 	if(!privacyMode){
 		initiate();
 	}
-	if(checkIfPackagesAllowed() == IS_NOT_ALLOWED){
+	if(checkIfPackagesAllowed() != IS_ALLOWED){
 //		mShutterCallback = null;
         	mRawImageCallback = null;
 		Log.i(PRIVACY_TAG,"blocked rawImageCallback -> it will never be called!");
