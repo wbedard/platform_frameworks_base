@@ -50,6 +50,7 @@ import java.util.List;
 
 ///////////////////////////////////////////////////
 import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceException;
 import android.privacy.PrivacySettings;
 import android.privacy.PrivacySettingsManager;
 import android.telephony.TelephonyManager;
@@ -79,9 +80,9 @@ public class Instrumentation {
      * instrumentation can also be launched, and results collected, by an automated system.
      */
     public static final String REPORT_KEY_STREAMRESULT = "stream";
-    
+
     private static final String TAG = "Instrumentation";
-    
+
     private final Object mSync = new Object();
     private ActivityThread mThread = null;
     private MessageQueue mMessageQueue = null;
@@ -95,7 +96,7 @@ public class Instrumentation {
     private boolean mAutomaticPerformanceSnapshots = false;
     private PerformanceCollector mPerformanceCollector;
     private Bundle mPerfMetrics = new Bundle();
-    
+
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
     private PrivacySettingsManager mPrvSvc;
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -180,7 +181,7 @@ public class Instrumentation {
             }
         }
     }
-    
+
     /**
      * Terminate instrumentation of the application.  This will cause the
      * application process to exit, removing this instrumentation from the next
@@ -199,7 +200,7 @@ public class Instrumentation {
         }
         mThread.finishInstrumentation(resultCode, results);
     }
-    
+
     public void setAutomaticPerformanceSnapshots() {
         mAutomaticPerformanceSnapshots = true;
         mPerformanceCollector = new PerformanceCollector();
@@ -210,13 +211,13 @@ public class Instrumentation {
             mPerformanceCollector.beginSnapshot(null);
         }
     }
-    
+
     public void endPerformanceSnapshot() {
         if (!isProfiling()) {
             mPerfMetrics = mPerformanceCollector.endSnapshot();
         }
     }
-    
+
     /**
      * Called when the instrumented application is stopping, after all of the
      * normal application cleanup has occurred.
@@ -248,7 +249,7 @@ public class Instrumentation {
     public ComponentName getComponentName() {
         return mComponent;
     }
-    
+
     /**
      * Return a Context for the target application being instrumented.  Note
      * that this is often different than the Context of the instrumentation
@@ -294,7 +295,7 @@ public class Instrumentation {
             Debug.stopMethodTracing();
         }
     }
-    
+
     /**
      * Force the global system in or out of touch mode.  This can be used if
      * your instrumentation relies on the UI being in one more or the other
@@ -311,7 +312,7 @@ public class Instrumentation {
             // Shouldn't happen!
         }
     }
-    
+
     /**
      * Schedule a callback for when the application's main thread goes idle
      * (has no more events to process).
@@ -376,9 +377,9 @@ public class Instrumentation {
 
         synchronized (mSync) {
             intent = new Intent(intent);
-    
+
             ActivityInfo ai = intent.resolveActivityInfo(
-                getTargetContext().getPackageManager(), 0);
+                    getTargetContext().getPackageManager(), 0);
             if (ai == null) {
                 throw new RuntimeException("Unable to resolve activity for: " + intent);
             }
@@ -390,7 +391,7 @@ public class Instrumentation {
                         + myProc + " resolved to different process "
                         + ai.processName + ": " + intent);
             }
-    
+
             intent.setComponent(new ComponentName(
                     ai.applicationInfo.packageName, ai.name));
             final ActivityWaiter aw = new ActivityWaiter(intent);
@@ -408,7 +409,7 @@ public class Instrumentation {
                 } catch (InterruptedException e) {
                 }
             } while (mWaitingActivities.contains(aw));
-         
+
             return aw.activity;
         }
     }
@@ -452,7 +453,7 @@ public class Instrumentation {
          * @see Instrumentation#addMonitor 
          */
         public ActivityMonitor(
-            IntentFilter which, ActivityResult result, boolean block) {
+                IntentFilter which, ActivityResult result, boolean block) {
             mWhich = which;
             mClass = null;
             mResult = result;
@@ -473,7 +474,7 @@ public class Instrumentation {
          * @see Instrumentation#addMonitor 
          */
         public ActivityMonitor(
-            String cls, ActivityResult result, boolean block) {
+                String cls, ActivityResult result, boolean block) {
             mWhich = null;
             mClass = cls;
             mResult = result;
@@ -564,14 +565,14 @@ public class Instrumentation {
                 }
             }
         }
-        
+
         final boolean match(Context who,
-                            Activity activity,
-                            Intent intent) {
+                Activity activity,
+                Intent intent) {
             synchronized (this) {
                 if (mWhich != null
-                    && mWhich.match(who.getContentResolver(), intent,
-                                    true, "Instrumentation") < 0) {
+                        && mWhich.match(who.getContentResolver(), intent,
+                                true, "Instrumentation") < 0) {
                     return false;
                 }
                 if (mClass != null) {
@@ -632,7 +633,7 @@ public class Instrumentation {
      * @see #checkMonitorHit 
      */
     public ActivityMonitor addMonitor(
-        IntentFilter filter, ActivityResult result, boolean block) {
+            IntentFilter filter, ActivityResult result, boolean block) {
         ActivityMonitor am = new ActivityMonitor(filter, result, block);
         addMonitor(am);
         return am;
@@ -655,7 +656,7 @@ public class Instrumentation {
      * @see #checkMonitorHit 
      */
     public ActivityMonitor addMonitor(
-        String cls, ActivityResult result, boolean block) {
+            String cls, ActivityResult result, boolean block) {
         ActivityMonitor am = new ActivityMonitor(cls, result, block);
         addMonitor(am);
         return am;
@@ -720,7 +721,7 @@ public class Instrumentation {
         }
         return activity;
     }
-    
+
     /**
      * Remove an {@link ActivityMonitor} that was previously added with 
      * {@link #addMonitor}.
@@ -745,29 +746,29 @@ public class Instrumentation {
      *         false if item is disabled).
      */
     public boolean invokeMenuActionSync(Activity targetActivity, 
-                                    int id, int flag) {
+            int id, int flag) {
         class MenuRunnable implements Runnable {
             private final Activity activity;
             private final int identifier;
             private final int flags;
             boolean returnValue;
-            
+
             public MenuRunnable(Activity _activity, int _identifier,
-                                    int _flags) {
+                    int _flags) {
                 activity = _activity;
                 identifier = _identifier;
                 flags = _flags;
             }
-            
+
             public void run() {
                 Window win = activity.getWindow();
-                
+
                 returnValue = win.performPanelIdentifierAction(
-                            Window.FEATURE_OPTIONS_PANEL,
-                            identifier, 
-                            flags);                
+                        Window.FEATURE_OPTIONS_PANEL,
+                        identifier, 
+                        flags);                
             }
-            
+
         }        
         MenuRunnable mr = new MenuRunnable(targetActivity, id, flag);
         runOnMainSync(mr);
@@ -786,11 +787,11 @@ public class Instrumentation {
      */
     public boolean invokeContextMenuAction(Activity targetActivity, int id, int flag) {
         validateNotAppThread();
-        
+
         // Bring up context menu for current focus.
         // It'd be nice to do this through code, but currently ListView depends on
         //   long press to set metadata for its selected child
-        
+
         final KeyEvent downEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_CENTER); 
         sendKeySync(downEvent);
 
@@ -808,34 +809,34 @@ public class Instrumentation {
 
         // Wait for context menu to appear
         waitForIdleSync();
-        
+
         class ContextMenuRunnable implements Runnable {
             private final Activity activity;
             private final int identifier;
             private final int flags;
             boolean returnValue;
-            
+
             public ContextMenuRunnable(Activity _activity, int _identifier,
-                                    int _flags) {
+                    int _flags) {
                 activity = _activity;
                 identifier = _identifier;
                 flags = _flags;
             }
-            
+
             public void run() {
                 Window win = activity.getWindow();
                 returnValue = win.performContextMenuIdentifierAction(
-                            identifier, 
-                            flags);                
+                        identifier, 
+                        flags);                
             }
-            
+
         }        
-        
+
         ContextMenuRunnable cmr = new ContextMenuRunnable(targetActivity, id, flag);
         runOnMainSync(cmr);
         return cmr.returnValue;
     }
-    
+
     /**
      * Sends the key events corresponding to the text to the app being
      * instrumented.
@@ -898,7 +899,7 @@ public class Instrumentation {
         InputManager.getInstance().injectInputEvent(newEvent,
                 InputManager.INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH);
     }
-    
+
     /**
      * Sends an up and down key event sync to the currently focused window.
      * 
@@ -921,7 +922,7 @@ public class Instrumentation {
         sendKeySync(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
         sendKeySync(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
     }
-    
+
     /**
      * Dispatch a pointer event. Finished at some point after the recipient has
      * returned from its event processing, though it may <em>not</em> have
@@ -978,7 +979,7 @@ public class Instrumentation {
             ClassNotFoundException {
         return newApplication(cl.loadClass(className), context);
     }
-    
+
     /**
      * Perform instantiation of the process's {@link Application} object.  The
      * default implementation provides the normal system behavior.
@@ -1010,7 +1011,7 @@ public class Instrumentation {
     public void callApplicationOnCreate(Application app) {
         app.onCreate();
     }
-    
+
     /**
      * Perform instantiation of an {@link Activity} object.  This method is intended for use with
      * unit tests, such as android.test.ActivityUnitTestCase.  The activity will be useable
@@ -1060,8 +1061,8 @@ public class Instrumentation {
      */
     public Activity newActivity(ClassLoader cl, String className,
             Intent intent)
-            throws InstantiationException, IllegalAccessException,
-            ClassNotFoundException {
+                    throws InstantiationException, IllegalAccessException,
+                    ClassNotFoundException {
         return (Activity)cl.loadClass(className).newInstance();
     }
 
@@ -1087,9 +1088,9 @@ public class Instrumentation {
                 }
             }
         }
-        
+
         activity.performCreate(icicle);
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1100,36 +1101,36 @@ public class Instrumentation {
             }
         }
     }
-    
+
     public void callActivityOnDestroy(Activity activity) {
-      // TODO: the following block causes intermittent hangs when using startActivity
-      // temporarily comment out until root cause is fixed (bug 2630683)
-//      if (mWaitingActivities != null) {
-//          synchronized (mSync) {
-//              final int N = mWaitingActivities.size();
-//              for (int i=0; i<N; i++) {
-//                  final ActivityWaiter aw = mWaitingActivities.get(i);
-//                  final Intent intent = aw.intent;
-//                  if (intent.filterEquals(activity.getIntent())) {
-//                      aw.activity = activity;
-//                      mMessageQueue.addIdleHandler(new ActivityGoing(aw));
-//                  }
-//              }
-//          }
-//      }
-      
-      activity.performDestroy();
-      
-      if (mActivityMonitors != null) {
-          synchronized (mSync) {
-              final int N = mActivityMonitors.size();
-              for (int i=0; i<N; i++) {
-                  final ActivityMonitor am = mActivityMonitors.get(i);
-                  am.match(activity, activity, activity.getIntent());
-              }
-          }
-      }
-  }
+        // TODO: the following block causes intermittent hangs when using startActivity
+        // temporarily comment out until root cause is fixed (bug 2630683)
+        //      if (mWaitingActivities != null) {
+        //          synchronized (mSync) {
+        //              final int N = mWaitingActivities.size();
+        //              for (int i=0; i<N; i++) {
+        //                  final ActivityWaiter aw = mWaitingActivities.get(i);
+        //                  final Intent intent = aw.intent;
+        //                  if (intent.filterEquals(activity.getIntent())) {
+        //                      aw.activity = activity;
+        //                      mMessageQueue.addIdleHandler(new ActivityGoing(aw));
+        //                  }
+        //              }
+        //          }
+        //      }
+
+        activity.performDestroy();
+
+        if (mActivityMonitors != null) {
+            synchronized (mSync) {
+                final int N = mActivityMonitors.size();
+                for (int i=0; i<N; i++) {
+                    final ActivityMonitor am = mActivityMonitors.get(i);
+                    am.match(activity, activity, activity.getIntent());
+                }
+            }
+        }
+    }
 
     /**
      * Perform calling of an activity's {@link Activity#onRestoreInstanceState}
@@ -1194,7 +1195,7 @@ public class Instrumentation {
     public void callActivityOnResume(Activity activity) {
         activity.mResumed = true;
         activity.onResume();
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1236,7 +1237,7 @@ public class Instrumentation {
     public void callActivityOnPause(Activity activity) {
         activity.performPause();
     }
-    
+
     /**
      * Perform calling of an activity's {@link Activity#onUserLeaveHint} method.
      * The default implementation simply calls through to that method.
@@ -1246,7 +1247,7 @@ public class Instrumentation {
     public void callActivityOnUserLeaving(Activity activity) {
         activity.performUserLeaving();
     }
-    
+
     /*
      * Starts allocation counting. This triggers a gc and resets the counts.
      */
@@ -1260,11 +1261,11 @@ public class Instrumentation {
         Runtime.getRuntime().gc();
 
         Debug.resetAllCounts();
-        
+
         // start the counts
         Debug.startAllocCounting();
     }
-    
+
     /*
      * Stops allocation counting.
      */
@@ -1274,7 +1275,7 @@ public class Instrumentation {
         Runtime.getRuntime().gc();
         Debug.stopAllocCounting();
     }
-    
+
     /**
      * If Results already contains Key, it appends Value to the key's ArrayList
      * associated with the key. If the key doesn't already exist in results, it
@@ -1316,7 +1317,7 @@ public class Instrumentation {
         results.putLong("received_transactions", Debug.getBinderReceivedTransactions());
         return results;
     }
-    
+
     /**
      * Description of a Activity execution result to return to the original
      * activity.
@@ -1402,79 +1403,80 @@ public class Instrumentation {
             Context who, IBinder contextThread, IBinder token, Activity target,
             Intent intent, int requestCode, Bundle options) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
-        
+
         // BEGIN privacy-added
         boolean allowIntent = true;
         try{
-        	Log.d(TAG,"PDroid:Instrumentation:execStartActivity: execStartActivity for " + who.getPackageName());
+            Log.d(TAG,"PDroid:Instrumentation:execStartActivity: execStartActivity for " + who.getPackageName());
             if (intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL))){
                 allowIntent = false;
                 Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Intent action = Intent.ACTION_CALL or Intent.ACTION_DIAL for " + who.getPackageName());
-        		if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
-        		    mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
-        		    if (mPrvSvc != null) {
-        		        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Obtained privacy service");
-        		    } else {
-        		        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Privacy service not obtained");
-        		    }
-        		} else {
-        		    Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Already had privacy service");
-        		}
-        		
-        		if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
-        		    Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Privacy service not available: rejecting call attempt");
-        		    allowIntent = false;
-        		    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
-        		} else {
-            		PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
-            		if (privacySettings == null) {
+                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+                    mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+                    if (mPrvSvc != null) {
+                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Obtained privacy service");
+                    } else {
+                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Privacy service not obtained");
+                    }
+                } else {
+                    Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Already had privacy service");
+                }
+
+                try {
+                    PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
+                    if (privacySettings == null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: No settings for package: " + who.getPackageName());
                         allowIntent = true;
                         mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
-            		} else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
+                    } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: Settings permit " + who.getPackageName());
                         allowIntent = true;
                         mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-            		} else {
-            		    Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call denied: Settings deny " + who.getPackageName());
-            		    // No settings = allowed; any phone call setting but real == disallowed
-            		    
-                		allowIntent = false;
-                		
-                		// test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
-                		// Send the notification intent
-                		final Context tmp = who;
-                		// SM: the BLOCKED_PHONE_CALL intent is handled by the privacy service to fake a change in call state
-                		new Thread(new Runnable() {
-                		    public void run() {
-                		        // SM: Not clear why there is this delay
-                		    	try{
-                 		    		Thread.sleep(1000); //wait 1 Second
-                 		    	} catch(Exception e){
-                 		    		//nothing here
-                 		    	}  
-                		    	Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
-                        		Bundle extras = new Bundle();
-                        		extras.putString("packageName", tmp.getPackageName());
-                        		extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
-                        		privacy.putExtras(extras);
-                        		tmp.sendBroadcast(privacy);
-                        		Log.i("PrivacyContext","sent privacy intent");
-                		    }
-                		}).start();
-                		mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-            		}
-        		}
+                    } else {
+                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call denied: Settings deny " + who.getPackageName());
+                        // No settings = allowed; any phone call setting but real == disallowed
+
+                        allowIntent = false;
+                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                    }
+                } catch (PrivacyServiceException e) {
+                    allowIntent = false;
+                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                }
+
+                if (!allowIntent) {
+                    // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
+                    // Send the notification intent
+                    final Context tmp = who;
+                    // SM: the BLOCKED_PHONE_CALL intent is handled by the privacy service to fake a change in call state
+                    new Thread(new Runnable() {
+                        public void run() {
+                            // SM: Not clear why there is this delay
+                            try{
+                                Thread.sleep(1000); //wait 1 Second
+                            } catch(Exception e){
+                                //nothing here
+                            }  
+                            Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                            Bundle extras = new Bundle();
+                            extras.putString("packageName", tmp.getPackageName());
+                            extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                            privacy.putExtras(extras);
+                            tmp.sendBroadcast(privacy);
+                            Log.i("PrivacyContext","sent privacy intent");
+                        }
+                    }).start();
+                }
             }
         } catch(Exception e){
-        	 if(who != null) {
-        	     Log.e(TAG,"PDroid:Instrumentation:execStartActivity: Exception occurred handling intent for " + who.getPackageName(), e);
-        	 } else {
-        	     Log.e(TAG,"PDroid:Instrumentation:execStartActivity: Exception occurred handling intent for unknown package", e);
-        	 }
+            if(who != null) {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity: Exception occurred handling intent for " + who.getPackageName(), e);
+            } else {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity: Exception occurred handling intent for unknown package", e);
+            }
         }
         // END privacy-added
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1490,24 +1492,24 @@ public class Instrumentation {
                 }
             }
         }
-        
+
         // BEGIN privacy-added
         try{
-        	if (!allowIntent) return new ActivityResult(requestCode, intent);
+            if (!allowIntent) return new ActivityResult(requestCode, intent);
         } catch(Exception e) {
             Log.e(TAG,"PDroid:Instrumentation:execStartActivity: Exception occurred while trying to create ActivityResult", e);
-        	return null;
+            return null;
         }
-    	// END privacy-added
-        
+        // END privacy-added
+
         try {
             intent.setAllowFds(false);
             intent.migrateExtraStreamToClipData();
             int result = ActivityManagerNative.getDefault()
-                .startActivity(whoThread, intent,
-                        intent.resolveTypeIfNeeded(who.getContentResolver()),
-                        token, target != null ? target.mEmbeddedID : null,
-                        requestCode, 0, null, null, options);
+                    .startActivity(whoThread, intent,
+                            intent.resolveTypeIfNeeded(who.getContentResolver()),
+                            token, target != null ? target.mEmbeddedID : null,
+                                    requestCode, 0, null, null, options);
             checkStartActivityResult(result, intent);
         } catch (RemoteException e) {
         }
@@ -1542,7 +1544,7 @@ public class Instrumentation {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
 
         // BEGIN privacy-added
-        
+
         Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: execStartActivitiesAsUser for " + who.getPackageName());
         if (intents != null) {
             boolean checkPrivacySettings = false;
@@ -1580,11 +1582,7 @@ public class Instrumentation {
                 }
 
                 boolean allowCallIntents = false; 
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
-                    Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Privacy service not available - assuming permission denied");
-                    allowCallIntents = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
-                } else {
+                try {
                     PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
                     if (privacySettings == null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents allowed: No settings for package: " + who.getPackageName());
@@ -1599,6 +1597,9 @@ public class Instrumentation {
                         allowCallIntents = false;
                         mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
                     }
+                } catch (PrivacyServiceException e) {
+                    allowCallIntents = false;
+                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                 }
 
                 // If call intents are not allowed, need to regenerate the
@@ -1617,7 +1618,7 @@ public class Instrumentation {
                         }
                     }
                     intents = filteredIntents.toArray(new Intent [filteredIntents.size()]);
-                    
+
                     // Send the notification intent
                     final Context tmp = who;
                     // SM: the BLOCKED_PHONE_CALL intent is handled by the privacy service to fake a change in call state
@@ -1642,7 +1643,7 @@ public class Instrumentation {
             }
         }
         // END privacy-added
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1665,8 +1666,8 @@ public class Instrumentation {
                 resolvedTypes[i] = intents[i].resolveTypeIfNeeded(who.getContentResolver());
             }
             int result = ActivityManagerNative.getDefault()
-                .startActivities(whoThread, intents, resolvedTypes, token, options,
-                        userId);
+                    .startActivities(whoThread, intents, resolvedTypes, token, options,
+                            userId);
             checkStartActivityResult(result, intents[0]);
         } catch (RemoteException e) {
         }
@@ -1700,8 +1701,8 @@ public class Instrumentation {
      * {@hide}
      */
     public ActivityResult execStartActivity(
-        Context who, IBinder contextThread, IBinder token, Fragment target,
-        Intent intent, int requestCode, Bundle options) {
+            Context who, IBinder contextThread, IBinder token, Fragment target,
+            Intent intent, int requestCode, Bundle options) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
         // BEGIN privacy-added
         boolean allowIntent = true;
@@ -1720,12 +1721,8 @@ public class Instrumentation {
                 } else {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Already had privacy service");
                 }
-                
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
-                    Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Privacy service not available: rejecting call attempt");
-                    allowIntent = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
-                } else {
+
+                try {
                     PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
                     if (privacySettings == null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call allowed: No settings for package: " + who.getPackageName());
@@ -1738,42 +1735,48 @@ public class Instrumentation {
                     } else {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call denied: Settings deny " + who.getPackageName());
                         // No settings = allowed; any phone call setting but real == disallowed
-                        
-                        // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
-                        // Send the notification intent
-                        final Context tmp = who;
+
                         allowIntent = false;
-                        // SM: Why is all of this done? It seems like a weirdly unnecessary bit of code...
-                        new Thread(new Runnable() {
-                            public void run() {
-                                // SM: Not clear why there is this delay
-                                try{
-                                    Thread.sleep(1000); //wait 1 Second
-                                } catch(Exception e){
-                                    //nothing here
-                                }  
-                                Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
-                                Bundle extras = new Bundle();
-                                extras.putString("packageName", tmp.getPackageName());
-                                extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
-                                privacy.putExtras(extras);
-                                tmp.sendBroadcast(privacy);
-                                Log.i("PrivacyContext","sent privacy intent");
-                            }
-                        }).start();
                         mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
                     }
+                } catch (PrivacyServiceException e) {
+                    allowIntent = false;
+                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                }
+
+                if (!allowIntent) {
+                    // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
+                    // Send the notification intent
+                    final Context tmp = who;
+                    // SM: Why is all of this done? It seems like a weirdly unnecessary bit of code...
+                    new Thread(new Runnable() {
+                        public void run() {
+                            // SM: Not clear why there is this delay
+                            try{
+                                Thread.sleep(1000); //wait 1 Second
+                            } catch(Exception e){
+                                //nothing here
+                            }  
+                            Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                            Bundle extras = new Bundle();
+                            extras.putString("packageName", tmp.getPackageName());
+                            extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                            privacy.putExtras(extras);
+                            tmp.sendBroadcast(privacy);
+                            Log.i("PrivacyContext","sent privacy intent");
+                        }
+                    }).start();
                 }
             }
         } catch(Exception e){
-             if(who != null) {
-                 Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Exception occurred handling intent for " + who.getPackageName(), e);
-             } else {
-                 Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Exception occurred handling intent for unknown package", e);
-             }
+            if(who != null) {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Exception occurred handling intent for " + who.getPackageName(), e);
+            } else {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Exception occurred handling intent for unknown package", e);
+            }
         }
         // END privacy-added
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1789,7 +1792,7 @@ public class Instrumentation {
                 }
             }
         }
-        
+
         // BEGIN privacy-added
         try{
             if (!allowIntent) return new ActivityResult(requestCode, intent);
@@ -1798,15 +1801,15 @@ public class Instrumentation {
             return null;
         }
         // END privacy-added
-        
+
         try {
             intent.setAllowFds(false);
             intent.migrateExtraStreamToClipData();
             int result = ActivityManagerNative.getDefault()
-                .startActivity(whoThread, intent,
-                        intent.resolveTypeIfNeeded(who.getContentResolver()),
-                        token, target != null ? target.mWho : null,
-                        requestCode, 0, null, null, options);
+                    .startActivity(whoThread, intent,
+                            intent.resolveTypeIfNeeded(who.getContentResolver()),
+                            token, target != null ? target.mWho : null,
+                                    requestCode, 0, null, null, options);
             checkStartActivityResult(result, intent);
         } catch (RemoteException e) {
         }
@@ -1844,7 +1847,7 @@ public class Instrumentation {
             Context who, IBinder contextThread, IBinder token, Activity target,
             Intent intent, int requestCode, Bundle options, UserHandle user) {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
-        
+
         // BEGIN privacy-added
         boolean allowIntent = true;
         try{
@@ -1862,12 +1865,8 @@ public class Instrumentation {
                 } else {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Already had privacy service");
                 }
-                
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
-                    Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Privacy service not available: rejecting call attempt");
-                    allowIntent = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
-                } else {
+
+                try {
                     PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
                     if (privacySettings == null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call allowed: No settings for package: " + who.getPackageName());
@@ -1880,42 +1879,48 @@ public class Instrumentation {
                     } else {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call denied: Settings deny " + who.getPackageName());
                         // No settings = allowed; any phone call setting but real == disallowed
-                        
-                        // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
-                        // Send the notification intent
-                        final Context tmp = who;
+
                         allowIntent = false;
-                        // SM: Why is all of this done? It seems like a weirdly unnecessary bit of code...
-                        new Thread(new Runnable() {
-                            public void run() {
-                                // SM: Not clear why there is this delay
-                                try{
-                                    Thread.sleep(1000); //wait 1 Second
-                                } catch(Exception e){
-                                    //nothing here
-                                }  
-                                Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
-                                Bundle extras = new Bundle();
-                                extras.putString("packageName", tmp.getPackageName());
-                                extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
-                                privacy.putExtras(extras);
-                                tmp.sendBroadcast(privacy);
-                                Log.i("PrivacyContext","sent privacy intent");
-                            }
-                        }).start();
                         mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
                     }
+                } catch (PrivacyServiceException e) {
+                    allowIntent = false;
+                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                }
+                
+                if (!allowIntent) {
+                    // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
+                    // Send the notification intent
+                    final Context tmp = who;
+                    // SM: Why is all of this done? It seems like a weirdly unnecessary bit of code...
+                    new Thread(new Runnable() {
+                        public void run() {
+                            // SM: Not clear why there is this delay
+                            try{
+                                Thread.sleep(1000); //wait 1 Second
+                            } catch(Exception e){
+                                //nothing here
+                            }  
+                            Intent privacy = new Intent("android.privacy.BLOCKED_PHONE_CALL");
+                            Bundle extras = new Bundle();
+                            extras.putString("packageName", tmp.getPackageName());
+                            extras.putInt("phoneState", TelephonyManager.CALL_STATE_IDLE);
+                            privacy.putExtras(extras);
+                            tmp.sendBroadcast(privacy);
+                            Log.i("PrivacyContext","sent privacy intent");
+                        }
+                    }).start();
                 }
             }
         } catch(Exception e){
-             if(who != null) {
-                 Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Exception occurred handling intent for " + who.getPackageName(), e);
-             } else {
-                 Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Exception occurred handling intent for unknown package", e);
-             }
+            if(who != null) {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Exception occurred handling intent for " + who.getPackageName(), e);
+            } else {
+                Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Exception occurred handling intent for unknown package", e);
+            }
         }
         // END privacy-added
-        
+
         if (mActivityMonitors != null) {
             synchronized (mSync) {
                 final int N = mActivityMonitors.size();
@@ -1931,7 +1936,7 @@ public class Instrumentation {
                 }
             }
         }
-        
+
         // BEGIN privacy-added
         try{
             if (!allowIntent) return new ActivityResult(requestCode, intent);
@@ -1940,15 +1945,15 @@ public class Instrumentation {
             return null;
         }
         // END privacy-added
-        
+
         try {
             intent.setAllowFds(false);
             intent.migrateExtraStreamToClipData();
             int result = ActivityManagerNative.getDefault()
-                .startActivityAsUser(whoThread, intent,
-                        intent.resolveTypeIfNeeded(who.getContentResolver()),
-                        token, target != null ? target.mEmbeddedID : null,
-                        requestCode, 0, null, null, options, user.getIdentifier());
+                    .startActivityAsUser(whoThread, intent,
+                            intent.resolveTypeIfNeeded(who.getContentResolver()),
+                            token, target != null ? target.mEmbeddedID : null,
+                                    requestCode, 0, null, null, options, user.getIdentifier());
             checkStartActivityResult(result, intent);
         } catch (RemoteException e) {
         }
@@ -1970,36 +1975,36 @@ public class Instrumentation {
         if (res >= ActivityManager.START_SUCCESS) {
             return;
         }
-        
+
         switch (res) {
-            case ActivityManager.START_INTENT_NOT_RESOLVED:
-            case ActivityManager.START_CLASS_NOT_FOUND:
-                if (intent instanceof Intent && ((Intent)intent).getComponent() != null)
-                    throw new ActivityNotFoundException(
-                            "Unable to find explicit activity class "
-                            + ((Intent)intent).getComponent().toShortString()
-                            + "; have you declared this activity in your AndroidManifest.xml?");
+        case ActivityManager.START_INTENT_NOT_RESOLVED:
+        case ActivityManager.START_CLASS_NOT_FOUND:
+            if (intent instanceof Intent && ((Intent)intent).getComponent() != null)
                 throw new ActivityNotFoundException(
-                        "No Activity found to handle " + intent);
-            case ActivityManager.START_PERMISSION_DENIED:
-                throw new SecurityException("Not allowed to start activity "
-                        + intent);
-            case ActivityManager.START_FORWARD_AND_REQUEST_CONFLICT:
-                throw new AndroidRuntimeException(
-                        "FORWARD_RESULT_FLAG used while also requesting a result");
-            case ActivityManager.START_NOT_ACTIVITY:
-                throw new IllegalArgumentException(
-                        "PendingIntent is not an activity");
-            default:
-                throw new AndroidRuntimeException("Unknown error code "
-                        + res + " when starting " + intent);
+                        "Unable to find explicit activity class "
+                                + ((Intent)intent).getComponent().toShortString()
+                                + "; have you declared this activity in your AndroidManifest.xml?");
+            throw new ActivityNotFoundException(
+                    "No Activity found to handle " + intent);
+        case ActivityManager.START_PERMISSION_DENIED:
+            throw new SecurityException("Not allowed to start activity "
+                    + intent);
+        case ActivityManager.START_FORWARD_AND_REQUEST_CONFLICT:
+            throw new AndroidRuntimeException(
+                    "FORWARD_RESULT_FLAG used while also requesting a result");
+        case ActivityManager.START_NOT_ACTIVITY:
+            throw new IllegalArgumentException(
+                    "PendingIntent is not an activity");
+        default:
+            throw new AndroidRuntimeException("Unknown error code "
+                    + res + " when starting " + intent);
         }
     }
-    
+
     private final void validateNotAppThread() {
         if (ActivityThread.currentActivityThread() != null) {
             throw new RuntimeException(
-                "This method can not be called from the main application thread");
+                    "This method can not be called from the main application thread");
         }
     }
 
@@ -2021,7 +2026,7 @@ public class Instrumentation {
             onStart();
         }
     }
-    
+
     private static final class EmptyRunnable implements Runnable {
         public void run() {
         }

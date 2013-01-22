@@ -12,8 +12,13 @@
 
 package android.privacy;
 
+import java.util.Map;
 import android.content.Context;
 import android.os.RemoteException;
+import android.privacy.IPrivacySettingsManager;
+import android.privacy.PrivacyServiceDisconnectedException;
+import android.privacy.PrivacyServiceInvalidException;
+import android.privacy.PrivacySettingsManagerService;
 import android.util.Log;
 
 /**
@@ -25,241 +30,299 @@ import android.util.Log;
 public final class PrivacySettingsManager {
 
     private static final String TAG = "PrivacySettingsManager";
-    
+
     public static final String ACTION_PRIVACY_NOTIFICATION = "com.privacy.pdroid.PRIVACY_NOTIFICATION";
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
-    
+    private static final String SERVICE_CLASS = "android.privacy.IPrivacySettingsManager.Stub.Proxy";
+
     private IPrivacySettingsManager service;
-    
+    //private android.privacy.IPrivacySettingsManager.Stub.Proxy service;
+
     /**
      * @hide - this should be instantiated through Context.getSystemService
      * @param context
      */
     public PrivacySettingsManager(Context context, IPrivacySettingsManager service) {
-//        Log.d(TAG, "PrivacySettingsManager - initializing for package: " + context.getPackageName() + 
-//                " UID:" + Binder.getCallingUid());
+        //        Log.d(TAG, "PrivacySettingsManager - initializing for package: " + context.getPackageName() + 
+        //                " UID:" + Binder.getCallingUid());
+        try {
+            Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: service is of class: " + service.getClass().getCanonicalName());
+        } catch (Exception e) {
+            Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: service class not known: exception happened", e);
+        }
+
         this.service = service;
     }
 
     @Deprecated
-    public PrivacySettings getSettings(String packageName, int uid) {
+    public PrivacySettings getSettings(String packageName, int uid)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
         return getSettings(packageName);
     }
-    
-    public PrivacySettings getSettings(String packageName) {
+
+    public PrivacySettings getSettings(String packageName)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
         try {
-            if (service != null) {
-                return service.getSettings(packageName);
-            } else {
-                Log.e(TAG, "getSettings - PrivacySettingsManagerService is null");
-                return null;
-            }
+            return service.getSettings(packageName);
         } catch (RemoteException e) {
-            e.printStackTrace();
-            return null;
+            Log.e(TAG, "PrivacySettingsManager:getSettings: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
 
-    public boolean saveSettings(PrivacySettings settings) {
+
+    public boolean saveSettings(PrivacySettings settings)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
         try {
-//            Log.d(TAG, "saveSettings - " + settings);
-            if (service != null) {            
-                return service.saveSettings(settings);
-            } else {
-                Log.e(TAG, "saveSettings - PrivacySettingsManagerService is null");
-                return false;
-            }
+            return service.saveSettings(settings);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in saveSettings: ", e);
-            return false;
+            Log.e(TAG, "PrivacySettingsManager:saveSettings: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public boolean deleteSettings(String packageName) {
+
+
+    public boolean deleteSettings(String packageName)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
         try {
-            if (service != null) {
-                return service.deleteSettings(packageName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:deleteSettings: PrivacySettingsManagerService is null");
-                return false;
-            }
+            return service.deleteSettings(packageName);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in deleteSettings: ", e);
-            return false;
+            Log.e(TAG, "PrivacySettingsManager:deleteSettings: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
+
+
     @Deprecated
-    public boolean deleteSettings(String packageName, int uid) {
+    public boolean deleteSettings(String packageName, int uid)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
         return deleteSettings(packageName);
     }
-    
-    /**
-     * Checks whether the PrivacySettingsManagerService is available. For some reason,
-     * occasionally it appears to be null. In this case it should be initialized again.
-     */
-    public boolean isServiceAvailable() {
-        if (service != null) return true;
-        return false;
-    }
-    
+
     @Deprecated
     public void notification(String packageName, int uid, byte accessMode, String dataType, String output, PrivacySettings pSet) {
         notification(packageName, accessMode, dataType, output);
     }
-    
+
     @Deprecated
     public void notification(String packageName, byte accessMode, String dataType, String output, PrivacySettings pSet) {
         notification(packageName, accessMode, dataType, output);
     }
 
     public void notification(String packageName, byte accessMode, String dataType, String output) {
-          try {
-              if (service != null) {
-                  service.notification(packageName, accessMode, dataType, output);
-              } else {
-                  Log.e(TAG, "PrivacySettingsManager:notification: PrivacySettingsManagerService is null");
-              }            
-          } catch (RemoteException e) {
-              Log.e(TAG, "RemoteException in notification: ", e);
-          }
-  }
-    
-    public void registerObservers() {
         try {
-            if (service != null) {
-                service.registerObservers();
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:registerObservers: PrivacySettingsManagerService is null");
+            if (this.isServiceAvailable() && this.isServiceValid()) {
+                service.notification(packageName, accessMode, dataType, output);
             }
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in registerObservers: ", e);
+            Log.e(TAG, "PrivacySettingsManager:notification: Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public void addObserver(String packageName) {
+
+    public void registerObservers()
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                service.addObserver(packageName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:addObserver: PrivacySettingsManagerService is null");
-            }
+            service.registerObservers();
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in addObserver: ", e);
+            Log.e(TAG, "PrivacySettingsManager:registerObservers: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public boolean purgeSettings() {
+
+    public void addObserver(String packageName)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                return service.purgeSettings();
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:purgeSettings: PrivacySettingsManagerService is null");
-            }
+            service.addObserver(packageName);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in purgeSettings: ", e);
+            Log.e(TAG, "PrivacySettingsManager:addObserver: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
-        return false;
     }
-    
+
+    public boolean purgeSettings()
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+        try {
+            return service.purgeSettings();
+        } catch (RemoteException e) {
+            Log.e(TAG, "PrivacySettingsManager:purgeSettings: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
+        }
+    }
+
+    @Deprecated
     public double getVersion() {
-        try {
-            if (service != null) {
-                return service.getVersion();
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getVersion: PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getVersion: ", e);
-        }
-        return 0;
+        return PrivacySettingsManagerService.API_VERSION;
     }
-    
-    public boolean setEnabled(boolean enable) {
-        try {
-            if (service != null) {
-                return service.setEnabled(enable);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setEnabled: PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setEnabled: ", e);
-        }
-        return false;
+
+    public double getApiVersion() {
+        return PrivacySettingsManagerService.API_VERSION;
     }
-    
-    public boolean setNotificationsEnabled(boolean enable) {
-        try {
-            if (service != null) {
-                return service.setNotificationsEnabled(enable);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setNotificationsEnabled: PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setNotificationsEnabled: ", e);
-        }
-        return false;
+
+    public double getModVersion() {
+        return PrivacySettingsManagerService.MOD_VERSION;
     }
-    
-    public void setBootCompleted() {
+
+    public String getModDetails() {
+        return PrivacySettingsManagerService.MOD_DETAILS;
+    }
+
+    public boolean setEnabled(boolean enable)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                service.setBootCompleted();
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setBootCompleted: PrivacySettingsManagerService is null");
-            }
+            return service.setEnabled(enable);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setBootCompleted: ", e);
+            Log.e(TAG, "PrivacySettingsManager:addObserver: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public void setDebugFlagInt(String flagName, int value) {
+
+    public boolean setNotificationsEnabled(boolean enable)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                service.setDebugFlagInt(flagName, value);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setDebugFlagInt:PrivacySettingsManagerService is null");
-            }
+            return service.setNotificationsEnabled(enable);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setDebugFlagInt: ", e);
+            Log.e(TAG, "PrivacySettingsManager:setNotificationsEnabled: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public Integer getDebugFlagInt(String flagName) {
+
+    public void setBootCompleted()
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                return service.getDebugFlagInt(flagName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getDebugFlagInt:PrivacySettingsManagerService is null");
-            }
+            service.setBootCompleted();
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getDebugFlagInt: ", e);
-        }
-        return null;
-    }
-    
-    public void setDebugFlagBool(String flagName, boolean value) {
-        try {
-            if (service != null) {
-                service.setDebugFlagBool(flagName, value);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setDebugFlagBool:PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setDebugFlagBool: ", e);
+            Log.e(TAG, "PrivacySettingsManager:setBootCompleted: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
     }
-    
-    public Boolean getDebugFlagBool(String flagName) {
+
+    public void setDebugFlagInt(String flagName, int value)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
         try {
-            if (service != null) {
-                return service.getDebugFlagBool(flagName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getDebugFlagBool:PrivacySettingsManagerService is null");
-            }
+            service.setDebugFlagInt(flagName, value);
         } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getDebugFlagBool: ", e);
+            Log.e(TAG, "PrivacySettingsManager:setDebugFlagInt: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
         }
-        return null;
+    }
+
+    public Integer getDebugFlagInt(String flagName)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
+        try {
+            return service.getDebugFlagInt(flagName);
+        } catch (RemoteException e) {
+            Log.e(TAG, "PrivacySettingsManager:getDebugFlagInt: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
+        }
+    }
+
+    public void setDebugFlagBool(String flagName, boolean value) throws PrivacyServiceDisconnectedException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
+        try {
+            service.setDebugFlagBool(flagName, value);
+        } catch (RemoteException e) {
+            Log.e(TAG, "PrivacySettingsManager:setDebugFlagBool: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
+        }
+    }
+
+    public Boolean getDebugFlagBool(String flagName)
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
+        try {
+            return service.getDebugFlagBool(flagName);
+        } catch (RemoteException e) {
+            Log.e(TAG, "PrivacySettingsManager:getDebugFlagBoolInt: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
+        }
+    }
+
+    public Map<String, Integer> getDebugFlags()
+            throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
+        this.isServiceAvailableOrThrow();
+        this.isServiceValidOrThrow();
+
+        try {
+            return service.getDebugFlags();
+        } catch (RemoteException e) {
+            Log.e(TAG, "PrivacySettingsManager:getDebugFlags: Exception occurred in the remote privacy service", e);
+            throw new PrivacyServiceException("Exception occurred in the remote privacy service", e);
+        }
+    }
+
+    /**
+     * Checks that the 
+     * @return true if service class name matches expectations, otherwise false
+     */
+    public boolean isServiceValid() {
+        if (this.service.getClass().equals(SERVICE_CLASS)) {
+            return true;
+        } else {
+            Log.e(TAG, "PrivacySettingsManager:isServiceValid:PrivacySettingsManagerService is of an incorrect class (" + service.getClass().getCanonicalName() + ")");
+            return false;
+        }
+    }
+
+    private void isServiceValidOrThrow() throws PrivacyServiceInvalidException {
+        if (!this.isServiceValid()) {
+            throw new PrivacyServiceInvalidException();
+        }
+    }
+
+    /**
+     * Checks whether the PrivacySettingsManagerService is available. For some reason,
+     * occasionally it appears to be null. In this case it should be initialized again.
+     * @return true if service is connected, otherwise false
+     */
+    public boolean isServiceAvailable() {
+        if (service == null) {
+            Log.e(TAG, "PrivacySettingsManager:isServiceAvailable:PrivacySettingsManagerService is null");
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /**
+     * Checks whether the PrivacySettingsManagerService is available. For some reason,
+     * occasionally it appears to be null. In this case it should be initialized again.
+     */
+    private void isServiceAvailableOrThrow() throws PrivacyServiceDisconnectedException {
+        if (!this.isServiceAvailable()) {
+            throw new PrivacyServiceDisconnectedException();
+        }
     }
 }

@@ -64,7 +64,7 @@ public final class PrivacyPersistenceAdapter {
      * START DEBUG VARIABLES
      */
     private static volatile boolean useCache = true;
-    private static volatile boolean openAndCloseDb = true;
+    private static volatile boolean autoCloseDb = false;
     /**
      * END DEBUG VARIABLES
      */
@@ -201,7 +201,7 @@ public final class PrivacyPersistenceAdapter {
     }
     
     void setOpenAndCloseDb(boolean value) {
-        this.openAndCloseDb = value;
+        this.autoCloseDb = value;
         if (value) {
             if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:setOpenAndCloseDb: Open and close enabled");
         } else {
@@ -210,7 +210,7 @@ public final class PrivacyPersistenceAdapter {
     }
     
     boolean getOpenAndCloseDb() {
-        return this.openAndCloseDb;
+        return this.autoCloseDb;
     }
     
     void setCacheSize(int newSize) {
@@ -479,12 +479,12 @@ public final class PrivacyPersistenceAdapter {
             if (cacheResult != null) {
                 if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache hit for " + packageName);
                 //if the cached object is a stub, then it means that there is no privacy settings for that package, and null should be returned
-                if (cacheResult.isStub()) {
-                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:Cached result is a stub, return null:" + packageName);
-                    return null;
-                } else {
+                if (cacheResult instanceof PrivacySettings) {
                     if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:Cached result is not a stub:" + packageName);
                     return (PrivacySettings)cacheResult;
+                } else {
+                    if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:Cached result is a stub, return null:" + packageName);
+                    return null;
                 }
             } else {
                 if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache miss for " + packageName);
@@ -1146,7 +1146,7 @@ public final class PrivacyPersistenceAdapter {
             if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Decrement DB access threads: now " + Integer.toString(sDbAccessThreads));
             // only close DB if no other threads are reading
             if (sDbAccessThreads == 0 && mDb != null && mDb.isOpen()) {
-                if (this.openAndCloseDb) { 
+                if (this.autoCloseDb) { 
                     if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Closing the PDroid database");
                     mDb.close();
                 } else {
