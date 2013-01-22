@@ -1405,13 +1405,13 @@ public class Instrumentation {
         IApplicationThread whoThread = (IApplicationThread) contextThread;
 
         // BEGIN privacy-added
-        boolean allowIntent = true;
+        boolean allowIntent = false;
+        
         try{
             Log.d(TAG,"PDroid:Instrumentation:execStartActivity: execStartActivity for " + who.getPackageName());
             if (intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL))){
-                allowIntent = false;
                 Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Intent action = Intent.ACTION_CALL or Intent.ACTION_DIAL for " + who.getPackageName());
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable() || !mPrvSvc.isServiceValid()) {
                     mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
                     if (mPrvSvc != null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Obtained privacy service");
@@ -1422,26 +1422,28 @@ public class Instrumentation {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Already had privacy service");
                 }
 
-                try {
-                    PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
-                    if (privacySettings == null) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: No settings for package: " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
-                    } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: Settings permit " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-                    } else {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call denied: Settings deny " + who.getPackageName());
-                        // No settings = allowed; any phone call setting but real == disallowed
-
+                if (mPrvSvc != null) {
+                    try {
+                        PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
+                        if (privacySettings == null) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: No settings for package: " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
+                        } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call allowed: Settings permit " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        } else {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity: Call denied: Settings deny " + who.getPackageName());
+                            // No settings = allowed; any phone call setting but real == disallowed
+                            allowIntent = false;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        }
+                    } catch (PrivacyServiceException e) {
+                        Log.e(TAG,"PDroid:Instrumentation:execStartActivity: PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                     }
-                } catch (PrivacyServiceException e) {
-                    allowIntent = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                 }
 
                 if (!allowIntent) {
@@ -1570,7 +1572,9 @@ public class Instrumentation {
             } else {
                 Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: One or more intents triggered checking for " + who.getPackageName());
 
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+                boolean allowCallIntents = false;
+                
+                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable() || !mPrvSvc.isServiceValid()) {
                     mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
                     if (mPrvSvc != null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Obtained privacy service");
@@ -1581,25 +1585,27 @@ public class Instrumentation {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Already had privacy service");
                 }
 
-                boolean allowCallIntents = false; 
-                try {
-                    PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
-                    if (privacySettings == null) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents allowed: No settings for package: " + who.getPackageName());
-                        allowCallIntents = true;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
-                    } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents allowed: Settings permit " + who.getPackageName());
-                        allowCallIntents = true;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-                    } else {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents denied: Settings deny " + who.getPackageName());
+                if (mPrvSvc != null) {
+                    try {
+                        PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
+                        if (privacySettings == null) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents allowed: No settings for package: " + who.getPackageName());
+                            allowCallIntents = true;
+                            mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
+                        } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents allowed: Settings permit " + who.getPackageName());
+                            allowCallIntents = true;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        } else {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: Call intents denied: Settings deny " + who.getPackageName());
+                            allowCallIntents = false;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        }
+                    } catch (PrivacyServiceException e) {
+                        Log.e(TAG,"PDroid:Instrumentation:execStartActivitiesAsUser: PrivacyServiceException occurred", e);
                         allowCallIntents = false;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                     }
-                } catch (PrivacyServiceException e) {
-                    allowCallIntents = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                 }
 
                 // If call intents are not allowed, need to regenerate the
@@ -1711,7 +1717,7 @@ public class Instrumentation {
             if (intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL))){
                 allowIntent = false;
                 Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Intent action = Intent.ACTION_CALL or Intent.ACTION_DIAL for " + who.getPackageName());
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable() || !mPrvSvc.isServiceValid()) {
                     mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
                     if (mPrvSvc != null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Obtained privacy service");
@@ -1721,29 +1727,32 @@ public class Instrumentation {
                 } else {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Already had privacy service");
                 }
-
-                try {
-                    PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
-                    if (privacySettings == null) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call allowed: No settings for package: " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
-                    } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call allowed: Settings permit " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-                    } else {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call denied: Settings deny " + who.getPackageName());
-                        // No settings = allowed; any phone call setting but real == disallowed
-
+                
+                if (mPrvSvc != null) {
+                    try {
+                        PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
+                        if (privacySettings == null) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call allowed: No settings for package: " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
+                        } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call allowed: Settings permit " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        } else {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): Call denied: Settings deny " + who.getPackageName());
+                            // No settings = allowed; any phone call setting but real == disallowed
+    
+                            allowIntent = false;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        }
+                    } catch (PrivacyServiceException e) {
+                        Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with Fragments): PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                     }
-                } catch (PrivacyServiceException e) {
-                    allowIntent = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                 }
-
+                
                 if (!allowIntent) {
                     // test if broadcasting works! SM: I don't know what 'test if broadcasting works' means.
                     // Send the notification intent
@@ -1855,7 +1864,7 @@ public class Instrumentation {
             if (intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL))){
                 allowIntent = false;
                 Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Intent action = Intent.ACTION_CALL or Intent.ACTION_DIAL for " + who.getPackageName());
-                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable()) {
+                if (mPrvSvc == null || !mPrvSvc.isServiceAvailable() || !mPrvSvc.isServiceValid()) {
                     mPrvSvc = new PrivacySettingsManager(who, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
                     if (mPrvSvc != null) {
                         Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Obtained privacy service");
@@ -1866,26 +1875,29 @@ public class Instrumentation {
                     Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Already had privacy service");
                 }
 
-                try {
-                    PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
-                    if (privacySettings == null) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call allowed: No settings for package: " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
-                    } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call allowed: Settings permit " + who.getPackageName());
-                        allowIntent = true;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
-                    } else {
-                        Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call denied: Settings deny " + who.getPackageName());
-                        // No settings = allowed; any phone call setting but real == disallowed
-
+                if (mPrvSvc != null) {
+                    try {
+                        PrivacySettings privacySettings = mPrvSvc.getSettings(who.getPackageName());
+                        if (privacySettings == null) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call allowed: No settings for package: " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), PrivacySettings.REAL, PrivacySettings.DATA_PHONE_CALL, null);
+                        } else if (privacySettings.getPhoneCallSetting() == PrivacySettings.REAL) {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call allowed: Settings permit " + who.getPackageName());
+                            allowIntent = true;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        } else {
+                            Log.d(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): Call denied: Settings deny " + who.getPackageName());
+                            // No settings = allowed; any phone call setting but real == disallowed
+    
+                            allowIntent = false;
+                            mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        }
+                    } catch (PrivacyServiceException e) {
+                        Log.e(TAG,"PDroid:Instrumentation:execStartActivity (with UserHandle): PrivacyServiceException occurred", e);
                         allowIntent = false;
-                        mPrvSvc.notification(who.getPackageName(), privacySettings.getPhoneCallSetting(), PrivacySettings.DATA_PHONE_CALL, null);
+                        mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                     }
-                } catch (PrivacyServiceException e) {
-                    allowIntent = false;
-                    mPrvSvc.notification(who.getPackageName(), PrivacySettings.EMPTY, PrivacySettings.DATA_PHONE_CALL, null);
                 }
                 
                 if (!allowIntent) {
