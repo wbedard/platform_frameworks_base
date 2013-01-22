@@ -188,7 +188,7 @@ public final class PrivacyPersistenceAdapter {
      * START DEBUG FUNCTIONS
      */
     void setUseCache(boolean value) {
-        this.useCache = value;
+        useCache = value;
         if (value) {
             if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:setCacheSize: Cache enabled");
         } else {
@@ -197,11 +197,11 @@ public final class PrivacyPersistenceAdapter {
     }
     
     boolean getUseCache() {
-        return this.useCache;
+        return useCache;
     }
     
     void setOpenAndCloseDb(boolean value) {
-        this.autoCloseDb = value;
+        autoCloseDb = value;
         if (value) {
             if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:setOpenAndCloseDb: Open and close enabled");
         } else {
@@ -474,7 +474,7 @@ public final class PrivacyPersistenceAdapter {
                     "PrivacyPersistenceAdapter:getSettings:insufficient application identifier - package name is required");
         }
 
-        if (this.useCache) {
+        if (useCache) {
             PrivacySettingsStub cacheResult = settingsCache.get(packageName);
             if (cacheResult != null) {
                 if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache hit for " + packageName);
@@ -563,7 +563,7 @@ public final class PrivacyPersistenceAdapter {
                 }
             }
             
-            if (this.useCache) {
+            if (useCache) {
                 if (privacySettings != null) {
                     settingsCache.put(packageName, privacySettings);
                     if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:getSettings: Cache put for" + packageName);
@@ -780,7 +780,7 @@ public final class PrivacyPersistenceAdapter {
                         // mark DB transaction successful (commit the changes)
                         db.setTransactionSuccessful();
                         
-                        if (this.useCache) {
+                        if (useCache) {
                             //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to save the settings?)
                             settingsCache.remove(packageName);
                             if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Cache remove for" + packageName);
@@ -925,7 +925,7 @@ public final class PrivacyPersistenceAdapter {
 
                     db.setTransactionSuccessful();
 
-                    if (this.useCache) {
+                    if (useCache) {
                         //TODO: determine where this should actually go (i.e. should we delete from cache even if we fail to delete the settings?)
                         settingsCache.remove(packageName);
                         if (LOG_CACHE) Log.d(TAG, "PrivacyPersistenceAdapter:deleteSettings: Cache remove for" + packageName);
@@ -1146,7 +1146,7 @@ public final class PrivacyPersistenceAdapter {
             if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Decrement DB access threads: now " + Integer.toString(sDbAccessThreads));
             // only close DB if no other threads are reading
             if (sDbAccessThreads == 0 && mDb != null && mDb.isOpen()) {
-                if (this.autoCloseDb) { 
+                if (autoCloseDb) { 
                     if (LOG_OPEN_AND_CLOSE) Log.d(TAG, "PrivacyPersistenceAdapter:closeIdleDatabase: Closing the PDroid database");
                     mDb.close();
                 } else {
