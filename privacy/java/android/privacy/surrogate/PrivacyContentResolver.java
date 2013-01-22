@@ -91,6 +91,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_CONTACTS, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
                 } else if (auth.equals(CalendarContract.AUTHORITY)) {
                     if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
@@ -108,6 +112,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_CALENDAR, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
 
                 } else if (auth.equals(MMS_CONTENT_URI_AUTHORITY)) {
@@ -126,6 +134,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_MMS, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
 
                 } else if (auth.equals(SMS_CONTENT_URI_AUTHORITY)) {
@@ -144,6 +156,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_SMS, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
                     // all messages, sms and mms
                 } else if (auth.equals(MMS_SMS_CONTENT_URI_AUTHORITY) || 
@@ -165,6 +181,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_MMS_SMS, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
                 } else if (auth.equals(CallLog.AUTHORITY)) {
                     if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
@@ -182,6 +202,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_CALL_LOG, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
 
                 } else if (auth.equals(Browser.BOOKMARKS_URI.getAuthority())) {
@@ -200,6 +224,10 @@ public final class PrivacyContentResolver {
                         output_label = "[empty]";
                         output = new PrivacyCursor();
                         pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_BOOKMARKS, null);
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
+                        output_label = "[empty]";
+                        output = new PrivacyCursor();
                     }
                 }
             }
@@ -242,6 +270,9 @@ public final class PrivacyContentResolver {
                             privacyAllowed = false;
                         }
                     } catch (PrivacyServiceException e) {
+                        privacyAllowed = false;
+                    } catch (NullPointerException e) {
+                        Log.e(TAG, "PrivacyContentResolver:enforcePrivacyPermissions: NullPointerException occurred, probably privacy service", e);
                         privacyAllowed = false;
                     }
                 }
