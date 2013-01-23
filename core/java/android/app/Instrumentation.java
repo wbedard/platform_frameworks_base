@@ -1409,7 +1409,7 @@ public class Instrumentation {
         
         try{
             Log.d(TAG,"Privacy:Instrumentation:execStartActivity: execStartActivity for " + who.getPackageName());
-            if (!(intent.getAction() == null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL)))){
+            if (!(intent.getAction() != null && (intent.getAction().equals(Intent.ACTION_CALL) || intent.getAction().equals(Intent.ACTION_DIAL)))){
                 // all unprotected intents are permitted
                 allowIntent = true;
             } else {
