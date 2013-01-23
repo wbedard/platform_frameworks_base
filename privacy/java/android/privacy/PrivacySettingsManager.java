@@ -288,10 +288,13 @@ public final class PrivacySettingsManager {
      * @return true if service class name matches expectations, otherwise false
      */
     public boolean isServiceValid() {
-        if (this.service.getClass().equals(SERVICE_CLASS)) {
+        if (!isServiceAvailable()) return false;
+        
+        String serviceClass = this.service.getClass().getCanonicalName();
+        if (serviceClass.equals("android.privacy.IPrivacySettingsManager.Stub.Proxy") || serviceClass.equals("android.privacy.PrivacySettingsManagerService")) {
             return true;
         } else {
-            Log.e(TAG, "PrivacySettingsManager:isServiceValid:PrivacySettingsManagerService is of an incorrect class (" + service.getClass().getCanonicalName() + ")");
+            Log.e(TAG, "PrivacySettingsManager:isServiceValid:PrivacySettingsManagerService is of an incorrect class (" + service.getClass().getCanonicalName() +")");
             return false;
         }
     }
