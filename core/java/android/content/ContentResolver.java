@@ -376,7 +376,7 @@ public abstract class ContentResolver {
                 qCursor = unstableProvider.query(uri, projection,
                         selection, selectionArgs, sortOrder, remoteCancellationSignal);
                 // BEGIN privacy-added
-                // Log.d(TAG, "PDroid:ContentResolver:wrapping content resolver in PrivacyContentResolver");
+                // Log.d(TAG, "Privacy:ContentResolver:wrapping content resolver in PrivacyContentResolver");
                 qCursor = PrivacyContentResolver.enforcePrivacyPermission(uri, projection, mContext, qCursor);
                 // END privacy-added
             } catch (DeadObjectException e) {
@@ -391,7 +391,7 @@ public abstract class ContentResolver {
                 qCursor = stableProvider.query(uri, projection,
                         selection, selectionArgs, sortOrder, remoteCancellationSignal);
                 // BEGIN privacy-added
-                // Log.d(TAG, "PDroid:ContentResolver:wrapping content resolver in PrivacyContentResolver");
+                // Log.d(TAG, "Privacy:ContentResolver:wrapping content resolver in PrivacyContentResolver");
         		qCursor = PrivacyContentResolver.enforcePrivacyPermission(uri, projection, mContext, qCursor);
         		// END privacy-added
 
