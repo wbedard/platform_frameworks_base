@@ -15,4 +15,12 @@ package android.privacy;
 public class PrivacyServiceDisconnectedException extends PrivacyServiceException {
     private static final long serialVersionUID = 1L;
     public PrivacyServiceDisconnectedException() {}
+
+    public PrivacyServiceDisconnectedException(String message) {
+        super(message);
+    }
+    
+    public PrivacyServiceDisconnectedException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
