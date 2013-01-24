@@ -48,9 +48,9 @@ public final class PrivacyPersistenceAdapter {
     private static final int RETRY_QUERY_COUNT = 5;
     private static final String DATABASE_FILE = "/data/system/privacy.db";
     private static final int DATABASE_VERSION = 4;
-    private static final boolean LOG_LOCKING = true;
-    private static final boolean LOG_OPEN_AND_CLOSE = true;
-    private static final boolean LOG_CACHE = true;
+    private static final boolean LOG_LOCKING = false;
+    private static final boolean LOG_OPEN_AND_CLOSE = false;
+    private static final boolean LOG_CACHE = false;
     public static final int DUMMY_UID = -1;
 
     /**
