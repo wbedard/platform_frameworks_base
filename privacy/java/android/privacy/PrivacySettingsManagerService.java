@@ -45,7 +45,12 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
     private boolean notificationsEnabled;
     private boolean bootCompleted;
 
-    private static final double VERSION = 1.51;
+    static final double API_VERSION = 1.51;
+    static final double MOD_VERSION = 1.0;
+    static final String MOD_DETAILS = "OpenPDroid 1.0 by FFU5y, Mateor, wbedard; forked from PDroid 2.0\n" +
+    		"PDroid 2.0 by CollegeDev; forked from PDroid\n" +
+    		"PDroid by Syvat's\n" +
+    		"Additional contributions by Pastime1971";
 
     /**
      * @hide - this should be instantiated through Context.getSystemService
@@ -109,10 +114,6 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
             obs.children.remove(observePath);
         }
         return result;
-    }
-
-    public double getVersion() {
-        return VERSION;
     }
 
     public void notification(final String packageName, final byte accessMode,
@@ -235,53 +236,4 @@ public final class PrivacySettingsManagerService extends IPrivacySettingsManager
 		}
 	}
 	
-	
-	public static String DEBUG_FLAG_SEND_NOTIFICATIONS = "sendNotifications";
-	public static String DEBUG_FLAG_USE_CACHE = "useCache";
-	public static String DEBUG_FLAG_CACHE_SIZE = "cacheSize";
-	public static String DEBUG_FLAG_OPEN_AND_CLOSE_DB = "openAndCloseDb";
-	
-    public void setDebugFlagInt(String flagName, int value) throws RemoteException {
-        checkCallerCanWriteOrThrow();
-        if (flagName.equals(DEBUG_FLAG_CACHE_SIZE)) {
-            this.persistenceAdapter.setCacheSize(value);
-        } else {
-            throw new RemoteException();
-        }
-    }
-    
-    public int getDebugFlagInt(String flagName) throws RemoteException {
-        checkCallerCanWriteOrThrow();
-        if (flagName.equals(DEBUG_FLAG_CACHE_SIZE)) {
-            return this.persistenceAdapter.getCacheSize();
-        } else {
-            throw new RemoteException();
-        }
-    }
-    
-    public void setDebugFlagBool(String flagName, boolean value) throws RemoteException {
-        checkCallerCanWriteOrThrow();
-        if (flagName.equals(DEBUG_FLAG_USE_CACHE)) {
-            this.persistenceAdapter.setUseCache(value);
-        } else if (flagName.equals(DEBUG_FLAG_OPEN_AND_CLOSE_DB)) {
-            this.persistenceAdapter.setOpenAndCloseDb(value);
-        } else if (flagName.equals(DEBUG_FLAG_SEND_NOTIFICATIONS)) {
-            this.sendNotifications = value;
-        } else {
-            throw new RemoteException();
-        }
-    }
-    
-    public boolean getDebugFlagBool(String flagName) throws RemoteException {
-        checkCallerCanWriteOrThrow();
-        if (flagName.equals(DEBUG_FLAG_USE_CACHE)) {
-            return this.persistenceAdapter.getUseCache();
-        } else if (flagName.equals(DEBUG_FLAG_OPEN_AND_CLOSE_DB)) {
-            return this.persistenceAdapter.getOpenAndCloseDb();
-        } else if (flagName.equals(DEBUG_FLAG_SEND_NOTIFICATIONS)) {
-            return this.sendNotifications;
-        } else {
-            throw new RemoteException();
-        }
-	}
 }
