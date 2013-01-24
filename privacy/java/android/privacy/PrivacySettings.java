@@ -26,14 +26,8 @@ import java.util.Random;
  * {@hide} 
  */
 public final class PrivacySettings extends PrivacySettingsStub implements Parcelable {
-    
-    private final static boolean isStub = false;
-    
-    boolean isStub() {
-        return isStub;
-    }
-    
-    /**
+
+        /**
      * Real value, provided by the unmodified Android framework.
      */
     public static final byte REAL = 0;
