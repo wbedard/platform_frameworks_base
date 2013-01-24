@@ -162,17 +162,21 @@ public final class PrivacySettingsManager {
         return false;
     }
     
+    @Deprecated
     public double getVersion() {
-        try {
-            if (service != null) {
-                return service.getVersion();
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getVersion: PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getVersion: ", e);
-        }
-        return 0;
+        return PrivacySettingsManagerService.API_VERSION;
+    }
+
+    public double getApiVersion() {
+        return PrivacySettingsManagerService.API_VERSION;
+    }
+
+    public double getModVersion() {
+        return PrivacySettingsManagerService.MOD_VERSION;
+    }
+
+    public String getModDetails() {
+        return PrivacySettingsManagerService.MOD_DETAILS;
     }
     
     public boolean setEnabled(boolean enable) {
@@ -211,55 +215,5 @@ public final class PrivacySettingsManager {
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException in setBootCompleted: ", e);
         }
-    }
-    
-    public void setDebugFlagInt(String flagName, int value) {
-        try {
-            if (service != null) {
-                service.setDebugFlagInt(flagName, value);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setDebugFlagInt:PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setDebugFlagInt: ", e);
-        }
-    }
-    
-    public Integer getDebugFlagInt(String flagName) {
-        try {
-            if (service != null) {
-                return service.getDebugFlagInt(flagName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getDebugFlagInt:PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getDebugFlagInt: ", e);
-        }
-        return null;
-    }
-    
-    public void setDebugFlagBool(String flagName, boolean value) {
-        try {
-            if (service != null) {
-                service.setDebugFlagBool(flagName, value);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:setDebugFlagBool:PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in setDebugFlagBool: ", e);
-        }
-    }
-    
-    public Boolean getDebugFlagBool(String flagName) {
-        try {
-            if (service != null) {
-                return service.getDebugFlagBool(flagName);
-            } else {
-                Log.e(TAG, "PrivacySettingsManager:getDebugFlagBool:PrivacySettingsManagerService is null");
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "RemoteException in getDebugFlagBool: ", e);
-        }
-        return null;
     }
 }
