@@ -64,7 +64,7 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
 		try{
 			registerPrivacy();
 		} catch(Exception e){
-			Log.e(P_TAG,"failed to register privacy broadcastreceiver");
+			Log.e(P_TAG,"failed to register privacy broadcastreceiver", e);
 		}
 		Log.i(P_TAG,"constructor ready");
 	}

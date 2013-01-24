@@ -15,9 +15,11 @@ package android.privacy;
 import java.util.Map;
 import android.content.Context;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.privacy.IPrivacySettingsManager;
 import android.privacy.PrivacyServiceDisconnectedException;
 import android.privacy.PrivacyServiceInvalidException;
+import android.privacy.PrivacySettingsManager;
 import android.privacy.PrivacySettingsManagerService;
 import android.util.Log;
 
@@ -62,8 +64,7 @@ public final class PrivacySettingsManager {
 
     public PrivacySettings getSettings(String packageName)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
         try {
             return service.getSettings(packageName);
         } catch (RemoteException e) {
@@ -75,8 +76,7 @@ public final class PrivacySettingsManager {
 
     public boolean saveSettings(PrivacySettings settings)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
         try {
             return service.saveSettings(settings);
         } catch (RemoteException e) {
@@ -88,8 +88,7 @@ public final class PrivacySettingsManager {
 
     public boolean deleteSettings(String packageName)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
         try {
             return service.deleteSettings(packageName);
         } catch (RemoteException e) {
@@ -117,9 +116,10 @@ public final class PrivacySettingsManager {
 
     public void notification(String packageName, byte accessMode, String dataType, String output) {
         try {
-            if (this.isServiceAvailable() && this.isServiceValid()) {
-                service.notification(packageName, accessMode, dataType, output);
-            }
+            this.connectService();
+            service.notification(packageName, accessMode, dataType, output);
+        } catch (PrivacyServiceException e) {
+            Log.e(TAG, "PrivacySettingsManager:notification: Exception occurred connecting to the remote service", e);
         } catch (RemoteException e) {
             Log.e(TAG, "PrivacySettingsManager:notification: Exception occurred in the remote privacy service", e);
         }
@@ -127,8 +127,7 @@ public final class PrivacySettingsManager {
 
     public void registerObservers()
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             service.registerObservers();
@@ -140,8 +139,7 @@ public final class PrivacySettingsManager {
 
     public void addObserver(String packageName)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             service.addObserver(packageName);
@@ -153,8 +151,7 @@ public final class PrivacySettingsManager {
 
     public boolean purgeSettings()
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
         try {
             return service.purgeSettings();
         } catch (RemoteException e) {
@@ -182,8 +179,7 @@ public final class PrivacySettingsManager {
 
     public boolean setEnabled(boolean enable)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             return service.setEnabled(enable);
@@ -195,8 +191,7 @@ public final class PrivacySettingsManager {
 
     public boolean setNotificationsEnabled(boolean enable)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             return service.setNotificationsEnabled(enable);
@@ -208,8 +203,7 @@ public final class PrivacySettingsManager {
 
     public void setBootCompleted()
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             service.setBootCompleted();
@@ -221,8 +215,7 @@ public final class PrivacySettingsManager {
 
     public void setDebugFlagInt(String flagName, int value)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             service.setDebugFlagInt(flagName, value);
@@ -234,8 +227,7 @@ public final class PrivacySettingsManager {
 
     public Integer getDebugFlagInt(String flagName)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             return service.getDebugFlagInt(flagName);
@@ -246,8 +238,7 @@ public final class PrivacySettingsManager {
     }
 
     public void setDebugFlagBool(String flagName, boolean value) throws PrivacyServiceDisconnectedException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             service.setDebugFlagBool(flagName, value);
@@ -259,8 +250,7 @@ public final class PrivacySettingsManager {
 
     public Boolean getDebugFlagBool(String flagName)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             return service.getDebugFlagBool(flagName);
@@ -272,8 +262,7 @@ public final class PrivacySettingsManager {
 
     public Map<String, Integer> getDebugFlags()
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
-        this.isServiceAvailableOrThrow();
-        this.isServiceValidOrThrow();
+        this.connectService();
 
         try {
             return service.getDebugFlags();
@@ -289,12 +278,13 @@ public final class PrivacySettingsManager {
      */
     public boolean isServiceValid() {
         if (!isServiceAvailable()) return false;
-        
+
         String serviceClass = this.service.getClass().getCanonicalName();
         if (serviceClass.equals("android.privacy.IPrivacySettingsManager.Stub.Proxy") || serviceClass.equals("android.privacy.PrivacySettingsManagerService")) {
             return true;
         } else {
             Log.e(TAG, "PrivacySettingsManager:isServiceValid:PrivacySettingsManagerService is of an incorrect class (" + service.getClass().getCanonicalName() +")");
+            (new Throwable()).printStackTrace();
             return false;
         }
     }
@@ -313,6 +303,7 @@ public final class PrivacySettingsManager {
     public boolean isServiceAvailable() {
         if (service == null) {
             Log.e(TAG, "PrivacySettingsManager:isServiceAvailable:PrivacySettingsManagerService is null");
+            (new Throwable()).printStackTrace();
             return false;
         } else {
             return true;
@@ -326,6 +317,33 @@ public final class PrivacySettingsManager {
     private void isServiceAvailableOrThrow() throws PrivacyServiceDisconnectedException {
         if (!this.isServiceAvailable()) {
             throw new PrivacyServiceDisconnectedException();
+        }
+    }
+
+    private void connectService() throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException {
+        if (!isServiceAvailable() || !isServiceValid()) {
+            try {
+                this.service = IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"));
+                if (this.service == null) {
+                    throw new PrivacyServiceDisconnectedException("Reconnection failed");
+                }
+            } catch (Exception e) {
+                throw new PrivacyServiceDisconnectedException("Reconnection failed", e);
+            }
+        }
+        //this.isServiceAvailableOrThrow();
+        //this.isServiceValidOrThrow();
+    }
+
+    public static PrivacySettingsManager getPrivacyService() {
+        return new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"))); //we can pass null here
+    }
+
+    public static PrivacySettingsManager getPrivacyService(Context context) {
+        if (context != null) {
+            return (PrivacySettingsManager) context.getSystemService("privacy");
+        } else {
+            return getPrivacyService();
         }
     }
 }
