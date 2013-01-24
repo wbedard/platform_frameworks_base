@@ -12,6 +12,7 @@
 
 package android.privacy;
 
+import java.lang.ref.WeakReference;
 import java.util.Map;
 import android.content.Context;
 import android.os.RemoteException;
@@ -32,12 +33,12 @@ import android.util.Log;
 public final class PrivacySettingsManager {
 
     private static final String TAG = "PrivacySettingsManager";
-
     public static final String ACTION_PRIVACY_NOTIFICATION = "com.privacy.pdroid.PRIVACY_NOTIFICATION";
     public static final String ACTION_PRIVACY_NOTIFICATION_ADDON = "com.privacy.pdroid.PRIVACY_NOTIFICATION_ADDON";
     private static final String SERVICE_CLASS = "android.privacy.IPrivacySettingsManager.Stub.Proxy";
 
-    private IPrivacySettingsManager service;
+    IPrivacySettingsManager service;
+    private WeakReference<Context> contextReference = null;
     //private android.privacy.IPrivacySettingsManager.Stub.Proxy service;
 
     /**
@@ -45,17 +46,28 @@ public final class PrivacySettingsManager {
      * @param context
      */
     public PrivacySettingsManager(Context context, IPrivacySettingsManager service) {
-        //        Log.d(TAG, "PrivacySettingsManager - initializing for package: " + context.getPackageName() + 
-        //                " UID:" + Binder.getCallingUid());
+        try {
+            Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: service is of class: " + service.getClass().getCanonicalName());
+        } catch (Exception e) {
+            Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: Service passed to the constructor is null", e);
+        }
+        this.contextReference = new WeakReference<Context>(context);
+        this.service = service;
+    }
+
+    /**
+     * @hide - this should be instantiated through Context.getSystemService
+     * @param context
+     */
+    public PrivacySettingsManager(IPrivacySettingsManager service) {
         try {
             Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: service is of class: " + service.getClass().getCanonicalName());
         } catch (Exception e) {
             Log.d(TAG, "PrivacySettingsManager:PrivacySettingsManager: service class not known: exception happened", e);
         }
-
         this.service = service;
     }
-
+    
     @Deprecated
     public PrivacySettings getSettings(String packageName, int uid)
             throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException, PrivacyServiceException {
@@ -322,28 +334,64 @@ public final class PrivacySettingsManager {
 
     private void connectService() throws PrivacyServiceDisconnectedException, PrivacyServiceInvalidException {
         if (!isServiceAvailable() || !isServiceValid()) {
-            try {
-                this.service = IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"));
-                if (this.service == null) {
-                    throw new PrivacyServiceDisconnectedException("Reconnection failed");
+            // It's hard to say whether it is worth accomodating the 'static service' case or not: it shouldn't come up because the static service should be persistent
+            if (contextReference != null) {
+                //Was initialised with a context: do we still have it?
+                Context context = contextReference.get();
+                if (context != null) {
+                    // Still have it: reconnect: this is horrible, but because the getSystemService for the Privacy service returns
+                    // a PrivacySettingsManager, there isn't really a way around it.
+                    // (Apart from having something like privacySettingsManager.getPrivacySettingsManager() and have the object return either a whole new PrivacySettings if necessary
+                    // or itself if it is still valid...
+                    PrivacySettingsManager transientPrivacySettingsManager = (PrivacySettingsManager) context.getSystemService("privacy");
+                    this.service = transientPrivacySettingsManager.service;
+                    transientPrivacySettingsManager = null;
+                } else {
+                    //Context has gone dead (been cleaned up). Make a non-static connection.
+                    Log.d(TAG, "PrivacySettingsmanager:connectService:switched from a static to non-static instance of the privacy service");
+                    this.service = IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"));
                 }
-            } catch (Exception e) {
-                throw new PrivacyServiceDisconnectedException("Reconnection failed", e);
+            } else {
+                this.service = IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"));
+            }
+
+            if (this.service == null) {
+                throw new PrivacyServiceDisconnectedException("Reconnection failed");
             }
         }
-        //this.isServiceAvailableOrThrow();
-        //this.isServiceValidOrThrow();
     }
 
+    /**
+     * Establish a connection to the Privacy service without using a Context
+     * @return PrivacySettingsManager connected to the privacy service
+     */
     public static PrivacySettingsManager getPrivacyService() {
-        return new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"))); //we can pass null here
+        return new PrivacySettingsManager(IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"))); //we can pass null here
     }
 
+    /**
+     * Establish a connection to the Privacy service using context.getSystemService if possible, otherwise without a context
+     * @param context  Context to use to connect to the service
+     * @return PrivacySettingsManager connected to the privacy service
+     */
     public static PrivacySettingsManager getPrivacyService(Context context) {
-        if (context != null) {
-            return (PrivacySettingsManager) context.getSystemService("privacy");
-        } else {
-            return getPrivacyService();
+        try {
+            if (context != null) {
+                try {
+                    PrivacySettingsManager privacySettingsManager = (PrivacySettingsManager) context.getSystemService("privacy");
+                    privacySettingsManager.contextReference = new WeakReference<Context>(context);
+                    return privacySettingsManager;
+                } catch (Exception e) {
+                    Log.w(TAG, "PrivacySettingsManager:getPrivacyService(Context): exception occurred trying to obtain static service. Falling back to non-static service.", e);
+                    return getPrivacyService();
+                }
+            } else {
+                return getPrivacyService();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "PrivacySettingsManager:getPrivacyService(Context): exception occurred getting privacy service");
+            // return a 'disconnected' privacy service manager so that it isn't null
+            return new PrivacySettingsManager(null);
         }
     }
 }

@@ -57,10 +57,10 @@ public final class PrivacyTelephonyManager extends TelephonyManager {
     public PrivacyTelephonyManager(Context context) {
         super(context);
         this.context = context;
-        //        pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+
         // don't call getSystemService to avoid getting java.lang.IllegalStateException: 
         // System services not available to Activities before onCreate()
-        pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        pSetMan = PrivacySettingsManager.getPrivacyService();
     }
 
     /**

@@ -412,11 +412,7 @@ public class MediaRecorder
     private int checkIfPackagesAllowed(int privacySetting){
         try{
             //boolean isAllowed = false;
-            if(pSetMan != null){
-                Log.e(PRIVACY_TAG,"MediaRecorder:checkIfPackagesAllowed: return GOT_ERROR, because pSetMan is NULL");
-                return GOT_ERROR;
-            }
-            
+            if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
             PrivacySettings pSet = null;
             String[] package_names = getPackageName();
             
@@ -475,7 +471,7 @@ public class MediaRecorder
     private void initiate(){
     	try{
     		context = null;
-    		pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+    		if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
     		mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
        	 	//runner = new PrivacyRunner();
        	 	privacyMode = true;

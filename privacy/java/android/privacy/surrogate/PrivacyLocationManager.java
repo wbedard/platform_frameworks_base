@@ -51,8 +51,7 @@ public final class PrivacyLocationManager extends LocationManager {
     public PrivacyLocationManager(ILocationManager service, Context context) {
         super(context, service);
         this.context = context;
-//        pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
-        pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));        
+        pSetMan = PrivacySettingsManager.getPrivacyService();        
     }
 
     @Override

@@ -351,23 +351,21 @@ public class PhoneStateListener {
             CellLocation location = CellLocation.newFromBundle(bundle);
             //Message.obtain(mHandler, LISTEN_CELL_LOCATION, 0, 0, location).sendToTarget();
             // BEGIN privacy-modified
-            if (context != null) {
-                PrivacySettingsManager pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
-                
-                try {
-                    PrivacySettings pSet = pSetMan.getSettings(packageName);
-                    if (pSet.getLocationNetworkSetting() != PrivacySettings.REAL) {
-                        // simply block the method call, since simulating cell location is not feasible
-                        //output = "[no output]";
-                        pSetMan.notification(packageName, pSet.getLocationNetworkSetting(), PrivacySettings.DATA_LOCATION_NETWORK, null);            
-                    } else {
-                        //output = location.toString();
-                        Message.obtain(mHandler, LISTEN_CELL_LOCATION, 0, 0, location).sendToTarget();
-                        pSetMan.notification(packageName, PrivacySettings.REAL, PrivacySettings.DATA_LOCATION_NETWORK, null);            
-                    }
-                } catch (PrivacyServiceException e) {
-                    pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_NETWORK, null);
+            PrivacySettingsManager pSetMan = PrivacySettingsManager.getPrivacyService(context);
+            
+            try {
+                PrivacySettings pSet = pSetMan.getSettings(packageName);
+                if (pSet.getLocationNetworkSetting() != PrivacySettings.REAL) {
+                    // simply block the method call, since simulating cell location is not feasible
+                    //output = "[no output]";
+                    pSetMan.notification(packageName, pSet.getLocationNetworkSetting(), PrivacySettings.DATA_LOCATION_NETWORK, null);            
+                } else {
+                    //output = location.toString();
+                    Message.obtain(mHandler, LISTEN_CELL_LOCATION, 0, 0, location).sendToTarget();
+                    pSetMan.notification(packageName, PrivacySettings.REAL, PrivacySettings.DATA_LOCATION_NETWORK, null);            
                 }
+            } catch (PrivacyServiceException e) {
+                pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_LOCATION_NETWORK, null);
             }
             // END privacy-modified
         }
@@ -378,8 +376,8 @@ public class PhoneStateListener {
 //            Log.d(TAG, "onCallStateChanged - state:" + state + " incoming number:" + incomingNumber);
             // **SM: need to check this: I'm not sure that the appropriate behaviour for no context is to allow 
             // only take action if an incoming phone number is actually transmitted
-            if (context != null && incomingNumber != null && !incomingNumber.isEmpty()) {
-                PrivacySettingsManager pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+            if (incomingNumber != null && !incomingNumber.isEmpty()) {
+                PrivacySettingsManager pSetMan = pSetMan = PrivacySettingsManager.getPrivacyService(context);
                 String output = "";
                 try {
                     PrivacySettings pSet = pSetMan.getSettings(packageName, uid);
