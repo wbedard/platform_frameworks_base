@@ -264,7 +264,7 @@ public class Camera {
     private void initiate(){
     	try{
     		context = null;
-    		pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+    		if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
     		mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
        	 	privacyMode = true;
     	}
@@ -283,10 +283,7 @@ public class Camera {
     private int checkIfPackagesAllowed(){
     	try{
     		//boolean isAllowed = false;
-    		if (pSetMan != null) {
-                Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: return GOT_ERROR, because pSetMan is NULL");
-                return GOT_ERROR;
-    		}
+    	    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
     		String[] package_names = getPackageName();
     		if (package_names == null) {
                 Log.e(PRIVACY_TAG,"Camera:checkIfPackagesAllowed: return GOT_ERROR, because package_names are NULL");

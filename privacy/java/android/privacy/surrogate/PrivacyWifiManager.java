@@ -47,32 +47,29 @@ public class PrivacyWifiManager extends WifiManager{
     public PrivacyWifiManager(Context context, IWifiManager service){
         super(context, service);
         this.context = context;
-        pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        pSetMan = PrivacySettingsManager.getPrivacyService();
     }
 
     private PrivacyOutcome getPrivacyOutcome(boolean withForceState) {
         try {
-            if (pSetMan == null) {
-                return PrivacyOutcome.ERROR;
+            if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
+            PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
+            if (withForceState && settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
+                return PrivacyOutcome.FORCE_ONLINE;
+            } else if (settings == null) {
+                return PrivacyOutcome.REAL;
             } else {
-                PrivacySettings settings = pSetMan.getSettings(context.getPackageName());
-                if (withForceState && settings != null && settings.getForceOnlineState() == PrivacySettings.REAL) {
-                    return PrivacyOutcome.FORCE_ONLINE;
-                } else if (settings == null) {
+                switch (settings.getWifiInfoSetting()) {
+                case PrivacySettings.REAL:
                     return PrivacyOutcome.REAL;
-                } else {
-                    switch (settings.getWifiInfoSetting()) {
-                    case PrivacySettings.REAL:
-                        return PrivacyOutcome.REAL;
-                    case PrivacySettings.EMPTY:
-                        return PrivacyOutcome.EMPTY;
-                    case PrivacySettings.CUSTOM:
-                        return PrivacyOutcome.CUSTOM;
-                    case PrivacySettings.RANDOM:
-                        return PrivacyOutcome.RANDOM;
-                    default:
-                        return PrivacyOutcome.ERROR;
-                    }
+                case PrivacySettings.EMPTY:
+                    return PrivacyOutcome.EMPTY;
+                case PrivacySettings.CUSTOM:
+                    return PrivacyOutcome.CUSTOM;
+                case PrivacySettings.RANDOM:
+                    return PrivacyOutcome.RANDOM;
+                default:
+                    return PrivacyOutcome.ERROR;
                 }
             }
         } catch (PrivacyServiceException e) {

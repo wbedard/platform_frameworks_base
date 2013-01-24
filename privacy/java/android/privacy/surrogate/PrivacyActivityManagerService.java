@@ -66,8 +66,7 @@ public final class PrivacyActivityManagerService {
      */
     public static void enforcePrivacyPermission(String packageName, int uid, Intent intent, Context context, int receivers) {
 
-        if (pSetMan == null && context != null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
-        if (pSetMan == null && context == null) pSetMan = new PrivacySettingsManager(null, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy"))); //we can pass null here
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
 
         PrivacySettings pSet;
         String action = intent.getAction();
