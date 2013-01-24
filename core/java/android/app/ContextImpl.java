@@ -1885,7 +1885,7 @@ class ContextImpl extends Context {
 
     ContextImpl() {
         if (sOuterContext != null) {
-            Log.w(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
+            Log.d(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
         }
         sOuterContext = mOuterContext = this;
     }
@@ -1906,7 +1906,7 @@ class ContextImpl extends Context {
         mDisplay = context.mDisplay;
         
         if (sOuterContext != null) {
-            Log.w(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
+            Log.d(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
         }
         
         sOuterContext = mOuterContext = this;
@@ -1966,7 +1966,7 @@ class ContextImpl extends Context {
 
     final void setOuterContext(Context context) {
         if (sOuterContext != null) {
-            Log.w(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
+            Log.d(TAG, "Privacy:ContextImpl: ContextImpl being created but already has sOuterContext");
         }
 
         sOuterContext = mOuterContext = context;

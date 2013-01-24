@@ -20,5 +20,13 @@ package android.privacy;
  */
 public class PrivacyServiceInvalidException extends PrivacyServiceException {
     private static final long serialVersionUID = 1L;
-    public PrivacyServiceInvalidException() {}    
+    public PrivacyServiceInvalidException() {}
+    
+    public PrivacyServiceInvalidException(String message) {
+        super(message);
+    }
+    
+    public PrivacyServiceInvalidException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }
