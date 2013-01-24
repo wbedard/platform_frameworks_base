@@ -51,16 +51,12 @@ public final class PrivacyAccountManager extends AccountManager {
     public PrivacyAccountManager(Context context, IAccountManager service) {
         super(context, service);
         this.context = context;
-//        pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
-        pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));  
     }
 
     /** {@hide} */
     public PrivacyAccountManager(Context context, IAccountManager service, Handler handler) {
         super(context, service, handler);
         this.context = context;
-//        pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
-        pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));        
     }
 
     /**
@@ -73,6 +69,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String output_label;
         Account[] output;
 
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);
             
@@ -90,10 +87,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[empty accounts list]";
             output = new Account[0];
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_ACCOUNTS_LIST, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAccounts: NullPointerException occurred: service is probably null");
-            output_label = "[empty accounts list]";
-            output = new Account[0];
         }
         return output;
     }
@@ -104,7 +97,8 @@ public final class PrivacyAccountManager extends AccountManager {
         
         String output_label;
         Account[] output;
-
+        
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);
             
@@ -122,10 +116,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[empty accounts list]";
             output = new Account[0];
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_ACCOUNTS_LIST, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAccountsByType: NullPointerException occurred: service is probably null");
-            output_label = "[empty accounts list]";
-            output = new Account[0];
         }
                 
         return output;
@@ -139,6 +129,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String output_label;
         AccountManagerFuture<Boolean> output;
 
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);        
             if (pSet != null && pSet.getAccountsSetting() != PrivacySettings.REAL) {
@@ -155,10 +146,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[false]";
             output = new PrivacyAccountManagerFuture<Boolean>(false);
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_ACCOUNTS_LIST, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:hasFeatures: NullPointerException occurred: service is probably null");
-            output_label = "[false]";
-            output = new PrivacyAccountManagerFuture<Boolean>(false);
         }
 
         return output;
@@ -171,7 +158,8 @@ public final class PrivacyAccountManager extends AccountManager {
         String packageName = context.getPackageName();
         String output_label;
         AccountManagerFuture<Account[]> output;
-        
+
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);       
         
@@ -189,10 +177,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[false]";
             output = new PrivacyAccountManagerFuture<Account[]>(new Account[0]);
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_ACCOUNTS_LIST, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAccountsByTypeAndFeatures: NullPointerException occurred: service is probably null");
-            output_label = "[false]";
-            output = new PrivacyAccountManagerFuture<Account[]>(new Account[0]);
         }
                    
         return output;
@@ -209,6 +193,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String packageName = context.getPackageName();
         String output = null;
         
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);    
             
@@ -221,8 +206,6 @@ public final class PrivacyAccountManager extends AccountManager {
         } catch (PrivacyServiceException e) {
             Log.e(TAG, "PrivacyAccountManager:blockingGetAuthToken: PrivacyServiceException occurred");
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_AUTH_TOKENS, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:blockingGetAuthToken: NullPointerException occurred: service is probably null");
         }
         
         return output;
@@ -236,6 +219,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String output_label;
         AccountManagerFuture<Bundle> output;
 
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);   
             
@@ -253,10 +237,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[empty]";
             output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_AUTH_TOKENS, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAuthToken: NullPointerException occurred: service is probably null");
-            output_label = "[empty]";
-            output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
         }
         
         return output;
@@ -270,6 +250,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String output_label;
         AccountManagerFuture<Bundle> output;
 
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);   
         
@@ -287,10 +268,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[empty]";
             output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_AUTH_TOKENS, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAuthToken: NullPointerException occurred: service is probably null");
-            output_label = "[empty]";
-            output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
         }
 
         return output;
@@ -308,6 +285,7 @@ public final class PrivacyAccountManager extends AccountManager {
         String output_label;
         AccountManagerFuture<Bundle> output;
 
+        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
         try {
             PrivacySettings pSet = pSetMan.getSettings(packageName);   
             
@@ -325,10 +303,6 @@ public final class PrivacyAccountManager extends AccountManager {
             output_label = "[empty]";
             output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
             pSetMan.notification(packageName, PrivacySettings.ERROR, PrivacySettings.DATA_AUTH_TOKENS, null);
-        } catch (NullPointerException e) {
-            Log.e(TAG, "PrivacyAccountManager:getAccounts: NullPointerException occurred: service is probably null");
-            output_label = "[empty]";
-            output = new PrivacyAccountManagerFuture<Bundle>(new Bundle());
         }
                        
         return output;

@@ -3487,7 +3487,7 @@ public final class Settings {
          if(name.equals(ANDROID_ID)){ //normally it should work with sNameValueCache.getString instead of sLockSettings
   	       initiate();
   	       try{
-  		       if(pSetMan == null) pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+  	           if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
   		       if(mPm == null) mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
   		       PrivacySettings settings = null;
   		       final String[] packages = getPackageName();
@@ -3873,7 +3873,7 @@ public final class Settings {
 		private static void initiate(){
 			try{
 				context = null;
-				pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+				if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
 				mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
 				privacyMode = true;
 			}

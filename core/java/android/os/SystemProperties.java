@@ -113,7 +113,7 @@ public class SystemProperties
     private static void initiate(){
     	try{
     		context = null;
-    		pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+    		if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
     		mPm = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
        	 	privacyMode = true;
     	}

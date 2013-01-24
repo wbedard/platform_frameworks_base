@@ -57,7 +57,7 @@ public final class PrivacyContentResolver {
             if (auth != null) {
                 if (auth.equals(android.provider.Contacts.AUTHORITY) || auth.equals(ContactsContract.AUTHORITY)) {
 
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -97,7 +97,7 @@ public final class PrivacyContentResolver {
                         output = new PrivacyCursor();
                     }
                 } else if (auth.equals(CalendarContract.AUTHORITY)) {
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -119,7 +119,7 @@ public final class PrivacyContentResolver {
                     }
 
                 } else if (auth.equals(MMS_CONTENT_URI_AUTHORITY)) {
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -141,7 +141,7 @@ public final class PrivacyContentResolver {
                     }
 
                 } else if (auth.equals(SMS_CONTENT_URI_AUTHORITY)) {
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -166,7 +166,7 @@ public final class PrivacyContentResolver {
                         auth.equals("mms-sms-v2") /* htc specific, accessed by system messages application */) { 
 
                     // deny access if access to either sms, mms or both is restricted by privacy settings
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -187,7 +187,7 @@ public final class PrivacyContentResolver {
                         output = new PrivacyCursor();
                     }
                 } else if (auth.equals(CallLog.AUTHORITY)) {
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -209,7 +209,7 @@ public final class PrivacyContentResolver {
                     }
 
                 } else if (auth.equals(Browser.BOOKMARKS_URI.getAuthority())) {
-                    if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                    if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                     String packageName = context.getPackageName();
                     try {
                         PrivacySettings pSet = pSetMan.getSettings(packageName);
@@ -258,7 +258,7 @@ public final class PrivacyContentResolver {
             if (auth != null && auth.equals("com.google.android.gsf.gservices")) {
                 boolean privacyAllowed = false;
                 String packageName = context.getPackageName();
-                if (pSetMan == null) pSetMan = (PrivacySettingsManager) context.getSystemService("privacy");
+                if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService(context);
                 if (pSetMan == null) {
                     Log.e(TAG,"PrivacyContentResolver:enforcePrivacyPermission: privacy service could not be obtained");
                 } else {

@@ -60,7 +60,7 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
 	
 	public PrivacyTelephonyRegistry(Context context) {
 		super(context);
-		pSetMan = new PrivacySettingsManager(context, IPrivacySettingsManager.Stub.asInterface(ServiceManager.getService("privacy")));
+        pSetMan = PrivacySettingsManager.getPrivacyService();
 		try{
 			registerPrivacy();
 		} catch(Exception e){
@@ -270,6 +270,7 @@ public class PrivacyTelephonyRegistry extends TelephonyRegistry{
 	private boolean isPackageAllowed(int PERMISSION, String packageName){
 	    PrivacySettings settings;
 	    try {
+	        if (pSetMan == null) pSetMan = PrivacySettingsManager.getPrivacyService();
 	        settings = pSetMan.getSettings(packageName);
 	    } catch (PrivacyServiceException e) {
 	        return false;
