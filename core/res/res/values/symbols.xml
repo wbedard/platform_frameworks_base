@@ -1871,5 +1871,4 @@
 
   <!-- Extra -->
   <java-symbol type="integer" name="config_wallpaperMaxWidth" />
-
 </resources>
